@@ -1,0 +1,7 @@
+module game_shared {
+  header "Model.hpp"
+  header "View.hpp"
+  header "Input.hpp"
+  header "GameState.hpp"
+  export *
+}

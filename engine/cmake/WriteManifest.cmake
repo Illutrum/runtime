@@ -1,0 +1,28 @@
+cmake_minimum_required(VERSION 3.17)
+
+if(NOT MODEL_SO OR NOT VIEW_SO OR NOT MANIFEST_PATH)
+  message(FATAL_ERROR "WriteManifest.cmake requires MODEL_SO, VIEW_SO, MANIFEST_PATH")
+endif()
+
+find_program(SHA256SUM sha256sum)
+if(NOT SHA256SUM)
+  message(FATAL_ERROR "sha256sum not found")
+endif()
+
+execute_process(
+  COMMAND ${SHA256SUM} ${MODEL_SO}
+  OUTPUT_VARIABLE MODEL_HASH_OUT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+string(REGEX REPLACE "^([^ ]+).*" "\\1" MODEL_HASH "${MODEL_HASH_OUT}")
+
+execute_process(
+  COMMAND ${SHA256SUM} ${VIEW_SO}
+  OUTPUT_VARIABLE VIEW_HASH_OUT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+string(REGEX REPLACE "^([^ ]+).*" "\\1" VIEW_HASH "${VIEW_HASH_OUT}")
+
+set(TMP_PATH "${MANIFEST_PATH}.tmp")
+file(WRITE ${TMP_PATH} "${MODEL_HASH}\n${VIEW_HASH}\n")
+file(RENAME ${TMP_PATH} ${MANIFEST_PATH})
