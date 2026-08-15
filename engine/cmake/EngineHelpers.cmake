@@ -87,7 +87,7 @@ function(hotswap_plugin TARGET)
   target_compile_options(${TARGET} PRIVATE
     -fmodules
     -fcxx-modules
-    -fmodules-cache-path=${CMAKE_BINARY_DIR}/clang-modules/${TARGET}
+    -fmodules-cache-path=${CMAKE_BINARY_DIR}/clang-modules
     -fmodule-map-file=${HP_MODULE_MAP}
     -fno-autolink
   )

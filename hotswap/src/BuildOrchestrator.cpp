@@ -5,7 +5,9 @@
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
+#include <map>
 #include <thread>
 
 namespace hotswap {
@@ -29,6 +31,17 @@ namespace hotswap {
     private:
       BuildOrchestrator* owner_;
     };
+
+    double elapsedSeconds(
+      std::chrono::high_resolution_clock::time_point start,
+      std::chrono::high_resolution_clock::time_point finish
+    ) {
+      return std::chrono::duration<double>(finish - start).count();
+    }
+
+    void logTiming(const char* label, double seconds) {
+      std::cout << "hotswap " << label << ": " << std::fixed << std::setprecision(3) << seconds << "s\n";
+    }
 
   }
 
@@ -59,13 +72,21 @@ namespace hotswap {
     return code == 0;
   }
 
-  bool BuildOrchestrator::needsCmake() {
+  BuildOrchestrator::ScanResult BuildOrchestrator::scanSources() {
     namespace fs = std::filesystem;
-    bool need = false;
+    ScanResult result;
+    const bool firstScan = filesSet_.empty();
+
+    if (!fs::exists(config_.sourceDir)) return result;
+
+    std::map<std::string, fs::file_time_type> previousTimes;
+    for (const auto& entry : modTimesSet_) {
+      previousTimes[entry.first] = entry.second;
+    }
+
     std::set<std::pair<std::string, fs::file_time_type>> newModTimeSet;
     std::set<std::string> newFileSet;
-
-    if (!fs::exists(config_.sourceDir)) return false;
+    std::vector<std::string> changedPaths;
 
     for (const auto& entry : fs::recursive_directory_iterator(config_.sourceDir)) {
       if (!entry.is_regular_file()) continue;
@@ -73,41 +94,128 @@ namespace hotswap {
       auto lastMod = fs::last_write_time(entry.path());
       newModTimeSet.insert({path, lastMod});
       newFileSet.insert(path);
-      if (entry.path().filename() == "CMakeLists.txt" && cmakeListsModTime_ != lastMod) {
+
+      if (entry.path().filename() == "CMakeLists.txt") {
+        if (hasCmakeListsModTime_ && cmakeListsModTime_ != lastMod) {
+          result.needCmake = true;
+        }
         cmakeListsModTime_ = lastMod;
-        need = true;
+        hasCmakeListsModTime_ = true;
+      }
+
+      if (!firstScan) {
+        auto previous = previousTimes.find(path);
+        if (previous == previousTimes.end() || previous->second != lastMod) {
+          changedPaths.push_back(path);
+        }
       }
     }
 
-    if (newFileSet != filesSet_) {
-      filesSet_ = newFileSet;
-      need = true;
+    if (!fs::exists(fs::path(config_.buildDir) / "CMakeCache.txt")) {
+      result.needCmake = true;
     }
 
-    modTimesSet_ = newModTimeSet;
-    return need;
+    if (newFileSet != filesSet_) {
+      if (!firstScan) {
+        result.needCmake = true;
+        result.buildModel = true;
+        result.buildView = true;
+      }
+      filesSet_ = newFileSet;
+    }
+
+    if (newModTimeSet != modTimesSet_) {
+      result.needNinja = true;
+      modTimesSet_ = newModTimeSet;
+    }
+
+    if (firstScan) {
+      result.needNinja = true;
+      result.buildModel = true;
+      result.buildView = true;
+      return result;
+    }
+
+    if (result.needCmake) {
+      result.buildModel = true;
+      result.buildView = true;
+      result.needNinja = true;
+      return result;
+    }
+
+    fs::path sourceRoot(config_.sourceDir);
+    for (const auto& path : changedPaths) {
+      std::error_code ec;
+      auto relative = fs::relative(path, sourceRoot, ec);
+      if (ec) {
+        result.buildModel = true;
+        result.buildView = true;
+        continue;
+      }
+      std::string first = relative.empty() ? std::string() : relative.begin()->string();
+      if (first == "view") result.buildView = true;
+      else if (first == "model") result.buildModel = true;
+      else {
+        result.buildModel = true;
+        result.buildView = true;
+      }
+    }
+
+    if (!changedPaths.empty()) result.needNinja = true;
+    return result;
+  }
+
+  std::vector<std::string> BuildOrchestrator::ninjaTargets(const ScanResult& scan) const {
+    std::vector<std::string> targets;
+    if (scan.buildModel) targets.push_back("model");
+    if (scan.buildView) targets.push_back("view");
+    return targets;
   }
 
   void BuildOrchestrator::runBuild() {
     namespace fs = std::filesystem;
     fs::create_directories(config_.buildDir);
 
-    if (needsCmake()) {
+    auto scanStart = std::chrono::high_resolution_clock::now();
+    ScanResult scan = scanSources();
+    logTiming("scan", elapsedSeconds(scanStart, std::chrono::high_resolution_clock::now()));
+
+    if (scan.needCmake) {
       std::string cmakeSource = config_.cmakeSourceDir.empty()
         ? config_.sourceDir + "/../../.."
         : config_.cmakeSourceDir;
       std::string cmd = "cmake -S \"" + cmakeSource + "\" -B \"" + config_.buildDir +
                         "\" -DCMAKE_BUILD_TYPE=Debug 2>&1";
+      auto cmakeStart = std::chrono::high_resolution_clock::now();
       if (!runCommand(cmd)) {
         std::cerr << "hotswap: cmake failed\n";
         return;
       }
+      logTiming("cmake", elapsedSeconds(cmakeStart, std::chrono::high_resolution_clock::now()));
     }
 
-    std::string cmd = "cmake --build \"" + config_.buildDir + "\" --target model view 2>&1";
-    if (!runCommand(cmd)) {
-      std::cerr << "hotswap: build failed\n";
+    if (!scan.needNinja) return;
+
+    auto targets = ninjaTargets(scan);
+    if (targets.empty()) {
+      targets.push_back("model");
+      targets.push_back("view");
+    }
+
+    fs::path ninjaFile = fs::path(config_.buildDir) / "build.ninja";
+    if (!fs::exists(ninjaFile)) {
+      std::cerr << "hotswap: missing " << ninjaFile << " — run cmake with Ninja generator\n";
       return;
+    }
+
+    for (const auto& target : targets) {
+      std::string cmd = "ninja -C \"" + config_.buildDir + "\" " + target + " 2>&1";
+      auto ninjaStart = std::chrono::high_resolution_clock::now();
+      if (!runCommand(cmd)) {
+        std::cerr << "hotswap: ninja " << target << " failed\n";
+        return;
+      }
+      logTiming(("ninja " + target).c_str(), elapsedSeconds(ninjaStart, std::chrono::high_resolution_clock::now()));
     }
 
     if (!writeManifestAtomic(config_.manifestPath, config_.modelSoPath, config_.viewSoPath)) {
@@ -133,12 +241,7 @@ namespace hotswap {
         continue;
       }
 
-      auto start = std::chrono::high_resolution_clock::now();
       runBuild();
-      auto finish = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> elapsed = finish - start;
-      std::cout << "hotswap build: " << elapsed.count() << "s\n";
-
       buildNumber_.store(changeNumber_.load());
     }
   }

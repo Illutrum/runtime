@@ -10,6 +10,8 @@ Native-only hot-reload infrastructure for the Engine / Model / View architecture
 - `ModelModuleAsset` / `ViewModuleAsset` — dlopen through asset-manager
 - `AssetWatcher` — reload changed asset files without recompiling code
 
+Incremental plugin rebuilds use Clang header modules and `ninja -C` on only the changed target. See [docs/clang-header-modules.md](../../docs/clang-header-modules.md).
+
 ## Manual dev checklist
 
 Run from build dir: `cd build/examples && ./example_game`

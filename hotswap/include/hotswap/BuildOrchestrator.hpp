@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace hotswap {
 
@@ -30,9 +31,17 @@ namespace hotswap {
     void notifySourceChanged() { changeNumber_++; }
 
   private:
+    struct ScanResult {
+      bool needCmake = false;
+      bool needNinja = false;
+      bool buildModel = false;
+      bool buildView = false;
+    };
+
     void buildLoop();
     bool runCommand(const std::string& command);
-    bool needsCmake();
+    ScanResult scanSources();
+    std::vector<std::string> ninjaTargets(const ScanResult& scan) const;
     void runBuild();
 
     BuildConfig config_;
@@ -46,7 +55,8 @@ namespace hotswap {
 
     std::set<std::pair<std::string, std::filesystem::file_time_type>> modTimesSet_;
     std::set<std::string> filesSet_;
-    std::filesystem::file_time_type cmakeListsModTime_;
+    std::filesystem::file_time_type cmakeListsModTime_{};
+    bool hasCmakeListsModTime_ = false;
   };
 
 }

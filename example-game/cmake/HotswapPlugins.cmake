@@ -15,10 +15,12 @@ function(configure_hotswap_plugin TARGET)
     ${CMAKE_SOURCE_DIR}/game-dev/asset-manager/include
     ${CMAKE_SOURCE_DIR}/game-dev/asset-manager/fgfx/include
     ${CMAKE_SOURCE_DIR}/game-dev/asset-manager/fgfx
+    ${ENGINE_ROOT}/modulemap
   )
   target_compile_options(${TARGET} PRIVATE
     -fmodule-map-file=${SHARED_MODULE_MAP}
     -fmodule-map-file=${ENGINE_MODULE_MAP}
+    -fmodules-cache-path=${CMAKE_BINARY_DIR}/clang-modules
   )
   apply_p2996_plugin_target(${TARGET})
   apply_p2996_rpath_origin(${TARGET})

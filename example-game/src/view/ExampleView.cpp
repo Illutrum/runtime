@@ -1,11 +1,7 @@
 #include "View.hpp"
 #include "GameState.hpp"
+#include "EngineHeaders.hpp"
 
-#include <asset_manager.hpp>
-#include <asset_manager_fgfx.hpp>
-#include <fastgfx.hpp>
-
-#include <glm/glm.hpp>
 #include <memory>
 #include <string>
 
@@ -35,7 +31,7 @@ public:
     };
     mvp.multiply();
 
-    glClearColor(0.1f, 0.12f, 0.16f, 1);
+    glClearColor(0.31f, 0.52f, 0.16f, 1);
     glClear(GL_COLOR_BUFFER_BIT);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

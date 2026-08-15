@@ -1,6 +1,7 @@
 #include "Model.hpp"
 #include "GameState.hpp"
 #include "Input.hpp"
+#include "EngineHeaders.hpp"
 
 #include <serialization/deserialize.hpp>
 #include <serialization/serialize.hpp>

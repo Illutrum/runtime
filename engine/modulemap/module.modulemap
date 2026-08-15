@@ -1,4 +1,4 @@
-module engine {
+module engine_runtime {
   header "EngineHeaders.hpp"
   export *
 }
