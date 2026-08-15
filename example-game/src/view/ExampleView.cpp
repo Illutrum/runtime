@@ -16,6 +16,9 @@ public:
   void init() override {
     TextureAsset::registerAssetType();
     textureRequest_ = manager.request<TextureAsset>("assets/logo.png");
+    if (textureRequest_ && textureRequest_->asset) {
+      textureRequest_->asset->start();
+    }
   }
 
   void render(const void* snapshot, float delta) override {
@@ -47,11 +50,10 @@ public:
       spriteLayer_->reset();
       spriteLayer_->bufferSprite(
         sprite,
-        glm::scale(
-          glm::translate(glm::mat4(1.0f), glm::vec3(state->x, state->y, 0)),
-          glm::vec3(0.35f, 0.35f, 1)
-        ),
-        glm::vec4(state->renderColorR, state->renderColorG, state->renderColorB, 1.0f)
+        glm::vec2(state->x, state->y),
+        glm::vec4(state->renderColorR, state->renderColorG, state->renderColorB, 1.0f),
+        5.0f,
+        0.0f
       );
       spriteLayer_->upload();
       spriteLayer_->render(mvp);

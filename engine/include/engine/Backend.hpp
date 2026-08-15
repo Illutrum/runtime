@@ -1,31 +1,17 @@
 #ifndef ENGINE_BACKEND_HPP
 #define ENGINE_BACKEND_HPP
 
-#include <functional>
-#include <string>
-
 namespace engine {
-
-  using ModelCreateFn = void* (*)();
-  using ModelDestroyFn = void (*)(void*);
-  using ViewCreateFn = void* (*)();
-  using ViewDestroyFn = void (*)(void*);
 
   class ModelBackend {
   public:
-    ModelBackend() : instance_(nullptr), createFn_(nullptr), destroyFn_(nullptr) {}
+    ModelBackend() : instance_(nullptr) {}
 
-    void set(void* instance, ModelCreateFn createFn, ModelDestroyFn destroyFn) {
-      destroyCurrent();
+    void attach(void* instance) {
       instance_ = instance;
-      createFn_ = createFn;
-      destroyFn_ = destroyFn;
     }
 
-    void destroyCurrent() {
-      if (instance_ && destroyFn_) {
-        destroyFn_(instance_);
-      }
+    void clear() {
       instance_ = nullptr;
     }
 
@@ -40,25 +26,17 @@ namespace engine {
 
   private:
     void* instance_;
-    ModelCreateFn createFn_;
-    ModelDestroyFn destroyFn_;
   };
 
   class ViewBackend {
   public:
-    ViewBackend() : instance_(nullptr), createFn_(nullptr), destroyFn_(nullptr) {}
+    ViewBackend() : instance_(nullptr) {}
 
-    void set(void* instance, ViewCreateFn createFn, ViewDestroyFn destroyFn) {
-      destroyCurrent();
+    void attach(void* instance) {
       instance_ = instance;
-      createFn_ = createFn;
-      destroyFn_ = destroyFn;
     }
 
-    void destroyCurrent() {
-      if (instance_ && destroyFn_) {
-        destroyFn_(instance_);
-      }
+    void clear() {
       instance_ = nullptr;
     }
 
@@ -73,8 +51,6 @@ namespace engine {
 
   private:
     void* instance_;
-    ViewCreateFn createFn_;
-    ViewDestroyFn destroyFn_;
   };
 
 }

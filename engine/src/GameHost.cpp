@@ -83,20 +83,8 @@ namespace engine {
   void GameHost::bindBackendsFromAssets() {
 #ifdef __HOTSWAP
     if (!hotswap_->modelAsset || !hotswap_->viewAsset) return;
-    if (hotswap_->modelAsset->instance) {
-      modelBackend_.set(
-        hotswap_->modelAsset->instance,
-        hotswap_->modelAsset->createFnPtr(),
-        hotswap_->modelAsset->destroyFnPtr()
-      );
-    }
-    if (hotswap_->viewAsset->instance) {
-      viewBackend_.set(
-        hotswap_->viewAsset->instance,
-        hotswap_->viewAsset->createFnPtr(),
-        hotswap_->viewAsset->destroyFnPtr()
-      );
-    }
+    modelBackend_.attach(hotswap_->modelAsset->instance);
+    viewBackend_.attach(hotswap_->viewAsset->instance);
 #endif
   }
 
@@ -197,8 +185,12 @@ namespace engine {
     stopAssetWatcher();
     stopBuildOrchestrator();
 #endif
-    modelBackend_.destroyCurrent();
-    viewBackend_.destroyCurrent();
+    modelBackend_.clear();
+    viewBackend_.clear();
+#ifdef __HOTSWAP
+    if (hotswap_->viewAsset) hotswap_->viewAsset->unload();
+    if (hotswap_->modelAsset) hotswap_->modelAsset->unload();
+#endif
     fgfx::destroy();
   }
 
@@ -258,8 +250,8 @@ namespace engine {
       }
     }
 
-    modelBackend_.destroyCurrent();
-    viewBackend_.destroyCurrent();
+    modelBackend_.clear();
+    viewBackend_.clear();
 
     if (action == hotswap::ReloadAction::ReloadModelAndView) {
       hotswap_->modelAsset->startReload();
@@ -283,8 +275,6 @@ namespace engine {
       } else if (hotswap_->modelAsset->initFnPtr()) {
         hotswap_->modelAsset->initFnPtr()(modelBackend_.instance());
       }
-    } else if (viewBackend_.loaded() && hotswap_->viewAsset->initFnPtr()) {
-      hotswap_->viewAsset->initFnPtr()(viewBackend_.instance());
     }
 
     loading_ = false;

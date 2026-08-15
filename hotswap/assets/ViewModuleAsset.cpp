@@ -20,8 +20,8 @@ namespace hotswap {
     : TypedAsset<ViewModuleAsset>(type, name), libraryPath(name) {}
 
   void ViewModuleAsset::unload() {
-    if (instance && destroyFn) {
-      destroyFn(instance);
+    if (instance) {
+      if (destroyFn) destroyFn(instance);
       instance = nullptr;
     }
     if (handle) {
