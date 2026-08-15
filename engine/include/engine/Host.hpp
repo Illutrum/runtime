@@ -37,6 +37,8 @@ namespace engine {
     std::string modelSoPath;
     std::string viewSoPath;
     std::string manifestPath;
+    std::string viewTarget = "view";
+    std::string modelTarget = "model";
     std::string assetsDir;
     std::string uiFontPath = "assets/ui";
   };

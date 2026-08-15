@@ -118,7 +118,7 @@ namespace hotswap {
     if (newFileSet != filesSet_) {
       if (!firstScan) {
         result.needCmake = true;
-        result.buildModel = true;
+        if (!config_.modelTarget.empty()) result.buildModel = true;
         result.buildView = true;
       }
       filesSet_ = newFileSet;
@@ -131,33 +131,34 @@ namespace hotswap {
 
     if (firstScan) {
       result.needNinja = true;
-      result.buildModel = true;
+      if (!config_.modelTarget.empty()) result.buildModel = true;
       result.buildView = true;
       return result;
     }
 
     if (result.needCmake) {
-      result.buildModel = true;
+      if (!config_.modelTarget.empty()) result.buildModel = true;
       result.buildView = true;
       result.needNinja = true;
       return result;
     }
 
     fs::path sourceRoot(config_.sourceDir);
+    const bool viewOnly = config_.modelTarget.empty();
     for (const auto& path : changedPaths) {
       std::error_code ec;
       auto relative = fs::relative(path, sourceRoot, ec);
-      if (ec) {
-        result.buildModel = true;
+      if (ec || relative.empty()) {
         result.buildView = true;
+        if (!viewOnly) result.buildModel = true;
         continue;
       }
-      std::string first = relative.empty() ? std::string() : relative.begin()->string();
+      std::string first = relative.begin()->string();
       if (first == "view") result.buildView = true;
-      else if (first == "model") result.buildModel = true;
+      else if (first == "model" && !viewOnly) result.buildModel = true;
       else {
-        result.buildModel = true;
         result.buildView = true;
+        if (!viewOnly) result.buildModel = true;
       }
     }
 
@@ -167,8 +168,12 @@ namespace hotswap {
 
   std::vector<std::string> BuildOrchestrator::ninjaTargets(const ScanResult& scan) const {
     std::vector<std::string> targets;
-    if (scan.buildModel) targets.push_back("model");
-    if (scan.buildView) targets.push_back("view");
+    if (scan.buildModel && !config_.modelTarget.empty()) {
+      targets.push_back(config_.modelTarget);
+    }
+    if (scan.buildView) {
+      targets.push_back(config_.viewTarget.empty() ? "view" : config_.viewTarget);
+    }
     return targets;
   }
 
@@ -198,8 +203,8 @@ namespace hotswap {
 
     auto targets = ninjaTargets(scan);
     if (targets.empty()) {
-      targets.push_back("model");
-      targets.push_back("view");
+      if (!config_.modelTarget.empty()) targets.push_back(config_.modelTarget);
+      targets.push_back(config_.viewTarget.empty() ? "view" : config_.viewTarget);
     }
 
     fs::path ninjaFile = fs::path(config_.buildDir) / "build.ninja";

@@ -26,3 +26,23 @@ TEST_CASE("writeManifestAtomic writes both checksum lines") {
   CHECK(modelLine.size() == 64);
   CHECK(viewLine.size() == 64);
 }
+
+TEST_CASE("writeManifestAtomic allows empty model path") {
+  auto viewPath = std::string("/tmp/hotswap_test_view_only.so");
+  auto manifestPath = std::string("/tmp/hotswap_test_manifest_view_only.txt");
+
+  {
+    std::ofstream viewOut(viewPath, std::ios::binary);
+    viewOut << "view-bytes";
+  }
+
+  CHECK(hotswap::writeManifestAtomic(manifestPath, "", viewPath));
+
+  std::ifstream in(manifestPath);
+  std::string modelLine;
+  std::string viewLine;
+  std::getline(in, modelLine);
+  std::getline(in, viewLine);
+  CHECK(modelLine.empty());
+  CHECK(viewLine.size() == 64);
+}

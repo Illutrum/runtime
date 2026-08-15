@@ -82,8 +82,10 @@ namespace engine {
 
   void GameHost::bindBackendsFromAssets() {
 #ifdef __HOTSWAP
-    if (!hotswap_->modelAsset || !hotswap_->viewAsset) return;
-    modelBackend_.attach(hotswap_->modelAsset->instance);
+    if (!hotswap_->viewAsset) return;
+    if (hotswap_->modelAsset) {
+      modelBackend_.attach(hotswap_->modelAsset->instance);
+    }
     viewBackend_.attach(hotswap_->viewAsset->instance);
 #endif
   }
@@ -114,10 +116,12 @@ namespace engine {
     loadTask_ = std::make_shared<asset_manager::LoadTask>("Game modules");
 
 #ifdef __HOTSWAP
-    hotswap_->modelAsset = asset_manager::manager.getAsset<hotswap::ModelModuleAsset>(config_.modelSoPath);
     hotswap_->viewAsset = asset_manager::manager.getAsset<hotswap::ViewModuleAsset>(config_.viewSoPath);
-    hotswap_->viewAsset->addDependency(hotswap_->modelAsset);
-    loadTask_->addAsset(hotswap_->modelAsset);
+    if (!config_.modelSoPath.empty()) {
+      hotswap_->modelAsset = asset_manager::manager.getAsset<hotswap::ModelModuleAsset>(config_.modelSoPath);
+      hotswap_->viewAsset->addDependency(hotswap_->modelAsset);
+      loadTask_->addAsset(hotswap_->modelAsset);
+    }
     loadTask_->addAsset(hotswap_->viewAsset);
 #endif
 
@@ -207,6 +211,8 @@ namespace engine {
     buildConfig.modelSoPath = config_.modelSoPath;
     buildConfig.viewSoPath = config_.viewSoPath;
     buildConfig.manifestPath = config_.manifestPath;
+    buildConfig.viewTarget = config_.viewTarget.empty() ? "view" : config_.viewTarget;
+    buildConfig.modelTarget = config_.modelSoPath.empty() ? std::string() : config_.modelTarget;
 
     hotswap_->buildOrchestrator = std::make_shared<hotswap::BuildOrchestrator>(buildConfig);
     hotswap_->buildOrchestrator->start();
@@ -233,15 +239,17 @@ namespace engine {
   }
 
   void GameHost::performReload(hotswap::ReloadAction action) {
-    if (!hotswap_->modelAsset || !hotswap_->viewAsset) return;
+    if (!hotswap_->viewAsset) return;
 
     loading_ = true;
     showScene_ = false;
     loadingScreen_->show(loadTask_);
 
+    const bool reloadModel = action == hotswap::ReloadAction::ReloadModelAndView && hotswap_->modelAsset;
+
     std::string snapshot;
     std::string schema;
-    if (action == hotswap::ReloadAction::ReloadModelAndView && modelBackend_.loaded()) {
+    if (reloadModel && modelBackend_.loaded()) {
       if (hotswap_->modelAsset->serializeFnPtr()) {
         snapshot = readFnString(hotswap_->modelAsset->serializeFnPtr(), modelBackend_.instance());
       }
@@ -253,16 +261,14 @@ namespace engine {
     modelBackend_.clear();
     viewBackend_.clear();
 
-    if (action == hotswap::ReloadAction::ReloadModelAndView) {
+    if (reloadModel) {
       hotswap_->modelAsset->startReload();
-      hotswap_->viewAsset->startReload();
-    } else {
-      hotswap_->viewAsset->startReload();
     }
+    hotswap_->viewAsset->startReload();
 
     bindBackendsFromAssets();
 
-    if (action == hotswap::ReloadAction::ReloadModelAndView && modelBackend_.loaded()) {
+    if (reloadModel && modelBackend_.loaded()) {
       std::string newSchema;
       if (hotswap_->modelAsset->schemaFnPtr()) {
         newSchema = readFnString(hotswap_->modelAsset->schemaFnPtr(), modelBackend_.instance());

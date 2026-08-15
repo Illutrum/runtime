@@ -1,0 +1,65 @@
+cmake_minimum_required(VERSION 3.17)
+
+project(example_visualization LANGUAGES CXX)
+
+set(GAME_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+set(ENGINE_ROOT ${CMAKE_SOURCE_DIR}/game-dev/engine)
+
+include(${ENGINE_ROOT}/cmake/EngineHelpers.cmake)
+include(${CMAKE_SOURCE_DIR}/game-dev/example-game/cmake/HotswapPlugins.cmake)
+
+if(NOT EMSCRIPTEN)
+  set(VIEW_SO ${CMAKE_BINARY_DIR}/examples/libviz.so)
+  set(MANIFEST_PATH ${CMAKE_BINARY_DIR}/examples/visualization.manifest)
+
+  if(GAME_DEV_HOTSWAP)
+    add_library(example_visualization_view SHARED ${GAME_ROOT}/src/view/ExampleView.cpp)
+    configure_hotswap_plugin(example_visualization_view)
+    set_target_properties(example_visualization_view PROPERTIES OUTPUT_NAME viz)
+    target_link_libraries(example_visualization_view PRIVATE engine_runtime)
+    add_dependencies(example_visualization_view engine_runtime)
+
+    add_custom_command(
+      OUTPUT ${MANIFEST_PATH}
+      COMMAND ${CMAKE_COMMAND}
+        -DVIEW_SO=${VIEW_SO}
+        -DMANIFEST_PATH=${MANIFEST_PATH}
+        -P ${ENGINE_ROOT}/cmake/WriteManifest.cmake
+      DEPENDS example_visualization_view
+      COMMENT "Writing hotswap manifest for example_visualization"
+    )
+    add_custom_target(example_visualization_manifest DEPENDS ${MANIFEST_PATH})
+  endif()
+
+  add_executable(example_visualization ${GAME_ROOT}/src/exe/main.cpp)
+  add_engine_to_game(example_visualization)
+  target_include_directories(example_visualization PRIVATE ${GAME_ROOT}/src/shared)
+  target_compile_definitions(example_visualization PRIVATE
+    GAME_BUILD_DIR="${CMAKE_BINARY_DIR}/examples"
+    GAME_CMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}"
+    GAME_CMAKE_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+    GAME_ROOT_DIR="${GAME_ROOT}"
+  )
+  if(GAME_DEV_HOTSWAP)
+    add_dependencies(example_visualization example_visualization_view example_visualization_manifest engine_runtime)
+  else()
+    add_dependencies(example_visualization engine_runtime)
+  endif()
+
+  add_custom_command(TARGET example_visualization POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/examples/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/logo.png
+      ${CMAKE_BINARY_DIR}/examples/assets/logo.png
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/ui.png
+      ${CMAKE_BINARY_DIR}/examples/assets/ui.png
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/ui.fnt
+      ${CMAKE_BINARY_DIR}/examples/assets/ui.fnt
+  )
+
+  set_target_properties(example_visualization PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/examples
+  )
+endif()

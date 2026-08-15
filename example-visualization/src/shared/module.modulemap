@@ -1,0 +1,4 @@
+module game_shared {
+  header "View.hpp"
+  export *
+}

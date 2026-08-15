@@ -19,6 +19,8 @@ namespace hotswap {
     std::string modelSoPath;
     std::string viewSoPath;
     std::string manifestPath;
+    std::string viewTarget = "view";
+    std::string modelTarget = "model";
   };
 
   class BuildOrchestrator : public std::enable_shared_from_this<BuildOrchestrator> {

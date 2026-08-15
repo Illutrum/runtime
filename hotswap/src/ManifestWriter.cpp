@@ -29,11 +29,12 @@ namespace hotswap {
                            const std::string& modelSoPath,
                            const std::string& viewSoPath) {
     Manifest manifest;
-    manifest.modelChecksum = sha256File(modelSoPath);
-    manifest.viewChecksum = sha256File(viewSoPath);
-    if (manifest.modelChecksum.empty() || manifest.viewChecksum.empty()) {
-      return false;
+    if (!modelSoPath.empty()) {
+      manifest.modelChecksum = sha256File(modelSoPath);
+      if (manifest.modelChecksum.empty()) return false;
     }
+    manifest.viewChecksum = sha256File(viewSoPath);
+    if (manifest.viewChecksum.empty()) return false;
     return writeManifestFile(manifestPath, manifest);
   }
 
