@@ -62,4 +62,42 @@ if(NOT EMSCRIPTEN)
   set_target_properties(example_visualization PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/examples
   )
+else()
+  add_executable(example_visualization
+    ${GAME_ROOT}/src/exe/main.cpp
+    ${GAME_ROOT}/src/view/ExampleView.cpp
+  )
+  add_engine_to_game(example_visualization)
+  target_include_directories(example_visualization PRIVATE
+    ${GAME_ROOT}/src/shared
+    ${ENGINE_ROOT}/modulemap
+  )
+  target_compile_definitions(example_visualization PRIVATE
+    GAME_BUILD_DIR=""
+    GAME_CMAKE_BINARY_DIR=""
+    GAME_CMAKE_SOURCE_DIR=""
+    GAME_ROOT_DIR=""
+  )
+  set(VIZ_OUT_DIR ${CMAKE_BINARY_DIR}/examples/example_visualization)
+  set_target_properties(example_visualization PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${VIZ_OUT_DIR}
+  )
+  add_custom_command(TARGET example_visualization POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+      ${GAME_ROOT}/web/index.html
+      ${VIZ_OUT_DIR}/index.html
+    COMMAND ${CMAKE_COMMAND} -E copy
+      ${FGFX_ROOT}/runtime-js-compiled.js
+      ${VIZ_OUT_DIR}/runtime-js-compiled.js
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${VIZ_OUT_DIR}/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/logo.png
+      ${VIZ_OUT_DIR}/assets/logo.png
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/ui.png
+      ${VIZ_OUT_DIR}/assets/ui.png
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/ui.fnt
+      ${VIZ_OUT_DIR}/assets/ui.fnt
+  )
 endif()

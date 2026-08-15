@@ -94,4 +94,43 @@ if(NOT EMSCRIPTEN)
     )
     add_test(NAME ExampleGamePluginTests COMMAND $<TARGET_FILE:test_example_game_plugins>)
   endif()
+else()
+  add_executable(example_game
+    ${GAME_ROOT}/src/exe/main.cpp
+    ${GAME_ROOT}/src/model/ExampleModel.cpp
+    ${GAME_ROOT}/src/view/ExampleView.cpp
+  )
+  add_engine_to_game(example_game)
+  target_include_directories(example_game PRIVATE
+    ${GAME_ROOT}/src/shared
+    ${ENGINE_ROOT}/modulemap
+  )
+  target_compile_definitions(example_game PRIVATE
+    GAME_BUILD_DIR=""
+    GAME_CMAKE_BINARY_DIR=""
+    GAME_CMAKE_SOURCE_DIR=""
+    GAME_ROOT_DIR=""
+  )
+  set(GAME_OUT_DIR ${CMAKE_BINARY_DIR}/examples/example_game)
+  set_target_properties(example_game PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${GAME_OUT_DIR}
+  )
+  add_custom_command(TARGET example_game POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+      ${GAME_ROOT}/web/index.html
+      ${GAME_OUT_DIR}/index.html
+    COMMAND ${CMAKE_COMMAND} -E copy
+      ${FGFX_ROOT}/runtime-js-compiled.js
+      ${GAME_OUT_DIR}/runtime-js-compiled.js
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${GAME_OUT_DIR}/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/logo.png
+      ${GAME_OUT_DIR}/assets/logo.png
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/ui.png
+      ${GAME_OUT_DIR}/assets/ui.png
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/ui.fnt
+      ${GAME_OUT_DIR}/assets/ui.fnt
+  )
 endif()

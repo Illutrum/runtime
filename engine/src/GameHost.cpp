@@ -1,8 +1,10 @@
 #include <engine/Host.hpp>
 #include <engine/GlfwInputBinding.hpp>
 
+#ifdef __USE_GLFW
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#endif
 
 #include <LoadingScreen.hpp>
 #include <asset_manager.hpp>

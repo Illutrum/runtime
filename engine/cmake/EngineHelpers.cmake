@@ -2,6 +2,20 @@ set(FGFX_ROOT ${CMAKE_SOURCE_DIR}/game-dev/fgfx)
 set(ENGINE_ROOT ${CMAKE_SOURCE_DIR}/game-dev/engine)
 set(ENGINE_INCLUDE ${ENGINE_ROOT}/include)
 
+function(apply_emscripten_webgl2_target TARGET)
+  if(NOT EMSCRIPTEN)
+    return()
+  endif()
+  target_link_options(${TARGET} PRIVATE
+    -sUSE_WEBGL2=1
+    -sMIN_WEBGL_VERSION=2
+    -sMAX_WEBGL_VERSION=2
+    "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,allocate,intArrayFromString"
+    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite"
+    "--post-js=${FGFX_ROOT}/js/emscripten-glue.js"
+  )
+endfunction()
+
 function(add_engine_to_game TARGET)
   set(options "")
   set(oneValueArgs GAME_DIR)
@@ -12,8 +26,10 @@ function(add_engine_to_game TARGET)
     ${ENGINE_ROOT}/src/GameHost.cpp
     ${ENGINE_ROOT}/src/InputCollector.cpp
     ${ENGINE_ROOT}/src/HostLoadingUI.cpp
-    ${ENGINE_ROOT}/src/GlfwInputBinding.cpp
   )
+  if(NOT EMSCRIPTEN)
+    target_sources(${TARGET} PRIVATE ${ENGINE_ROOT}/src/GlfwInputBinding.cpp)
+  endif()
 
   target_include_directories(${TARGET} PRIVATE
     ${ENGINE_INCLUDE}
@@ -55,11 +71,7 @@ function(add_engine_to_game TARGET)
     aux_source_directory(${FGFX_ROOT}/src FGFX_ENGINE_SOURCES)
     list(APPEND FGFX_ENGINE_SOURCES ${FGFX_ROOT}/src/io/FileLoader.cpp)
     target_sources(${TARGET} PRIVATE ${FGFX_ENGINE_SOURCES})
-    target_link_options(${TARGET} PRIVATE
-      "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,allocate,intArrayFromString"
-      "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_fgfx_io_fileLoaded,_fgfx_io_fileFailed"
-      "--post-js=${FGFX_ROOT}/js/emscripten-glue.js"
-    )
+    apply_emscripten_webgl2_target(${TARGET})
   endif()
 endfunction()
 

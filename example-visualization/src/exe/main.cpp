@@ -1,6 +1,13 @@
 #include <engine/Host.hpp>
 #include "View.hpp"
 
+#ifndef __HOTSWAP
+extern "C" {
+  void* view_create();
+  void view_init(void* instance);
+}
+#endif
+
 #include <string>
 
 int main() {
@@ -18,8 +25,18 @@ int main() {
   config.viewTarget = "example_visualization_view";
   config.modelTarget.clear();
 
+#ifdef EMSCRIPTEN
+  engine::GameHost& host = *new engine::GameHost(config);
+#else
   engine::GameHost host(config);
+#endif
   host.init();
+
+#ifndef __HOTSWAP
+  void* viewInstance = view_create();
+  view_init(viewInstance);
+  host.viewBackend().attach(viewInstance);
+#endif
 
   host.setFrameCallback([&host](float delta, const engine::RawInput& raw) {
     (void)raw;
@@ -28,7 +45,9 @@ int main() {
     view->render(nullptr, delta);
   });
 
+#ifndef EMSCRIPTEN
   host.run();
   host.destroy();
+#endif
   return 0;
 }

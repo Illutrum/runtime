@@ -4,6 +4,15 @@
 #include "Model.hpp"
 #include "View.hpp"
 
+#ifndef __HOTSWAP
+extern "C" {
+  void* view_create();
+  void view_init(void* instance);
+  void* model_create();
+  void model_init(void* instance);
+}
+#endif
+
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -38,8 +47,21 @@ int main() {
   config.manifestPath = buildDir + "/hotswap.manifest";
   config.assetsDir = buildDir + "/assets";
 
+#ifdef EMSCRIPTEN
+  engine::GameHost& host = *new engine::GameHost(config);
+#else
   engine::GameHost host(config);
+#endif
   host.init();
+
+#ifndef __HOTSWAP
+  void* modelInstance = model_create();
+  model_init(modelInstance);
+  host.modelBackend().attach(modelInstance);
+  void* viewInstance = view_create();
+  view_init(viewInstance);
+  host.viewBackend().attach(viewInstance);
+#endif
 
   host.setFrameCallback([&host](float delta, const engine::RawInput& raw) {
     auto* model = host.modelBackend().as<Model>();
@@ -56,7 +78,9 @@ int main() {
     view->render(model->snapshot(), delta);
   });
 
+#ifndef EMSCRIPTEN
   host.run();
   host.destroy();
+#endif
   return 0;
 }

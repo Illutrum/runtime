@@ -1,8 +1,5 @@
 #include <engine/Host.hpp>
 
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
-
 #include <LoadingScreen.hpp>
 #include <asset_manager_fgfx.hpp>
 #include <fastgfx.hpp>
