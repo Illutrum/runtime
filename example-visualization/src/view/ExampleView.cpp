@@ -1,5 +1,6 @@
 #include "View.hpp"
 #include "EngineHeaders.hpp"
+#include "ThorVGRaster.hpp"
 
 #include <iomanip>
 #include <memory>
@@ -10,6 +11,10 @@ using namespace asset_manager;
 
 class ExampleView : public View {
 public:
+  ~ExampleView() override {
+    viz::ThorVGRaster::term();
+  }
+
   void init() override {
     TextureAsset::registerAssetType();
     MSDFFontAsset::registerAssetType();
@@ -21,6 +26,10 @@ public:
     if (fontRequest_ && fontRequest_->asset) {
       fontRequest_->asset->start();
     }
+
+    vectorTex_ = fgfx::engine->createEmptyTexture(512, 512, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
+    vectorSprite_ = fgfx::engine->getEmptySprite("thorvg_circle");
+    viz::ThorVGRaster::init();
   }
 
   void render(const void* snapshot, float delta) override {
@@ -40,6 +49,22 @@ public:
     };
     mvp.multiply();
 
+    if (vectorTex_ && vectorSprite_ && !vectorReady_) {
+      vectorReady_ = viz::ThorVGRaster::rasterTo(*vectorTex_);
+      if (vectorReady_) {
+        vectorSprite_->setTextureFragment(
+          vectorTex_->texture,
+          0.0f,
+          1.0f,
+          1.0f,
+          0.0f,
+          vectorTex_->width,
+          vectorTex_->height,
+          true
+        );
+      }
+    }
+
     glClearColor(0.31f, 0.52f, 0.16f, 1);
     glClear(GL_COLOR_BUFFER_BIT);
     glEnable(GL_BLEND);
@@ -52,10 +77,19 @@ public:
       msdfLayer_ = fgfx::engine->createMSDFLayer();
     }
 
+    spriteLayer_->reset();
+    if (vectorReady_ && vectorSprite_) {
+      spriteLayer_->bufferSprite(
+        vectorSprite_,
+        glm::vec2(-8.0f, 0.0f),
+        glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+        6.0f,
+        0.0f
+      );
+    }
     auto texture = textureRequest_ ? textureRequest_->get() : nullptr;
     if (texture && texture->texture) {
       auto sprite = fgfx::engine->getSprite("assets/logo.png");
-      spriteLayer_->reset();
       spriteLayer_->bufferSprite(
         sprite,
         glm::vec2(0.0f, 0.0f),
@@ -63,9 +97,9 @@ public:
         6.0f,
         0.0f
       );
-      spriteLayer_->upload();
-      spriteLayer_->render(mvp);
     }
+    spriteLayer_->upload();
+    spriteLayer_->render(mvp);
 
     auto fontAsset = fontRequest_ ? fontRequest_->get() : nullptr;
     if (fontAsset && fontAsset->font) {
@@ -94,6 +128,9 @@ private:
   std::shared_ptr<AssetRequestT<MSDFFontAsset>> fontRequest_;
   std::shared_ptr<fgfx::SpriteLayer> spriteLayer_;
   std::shared_ptr<fgfx::MSDFLayer> msdfLayer_;
+  std::shared_ptr<fgfx::Texture> vectorTex_;
+  std::shared_ptr<fgfx::Sprite> vectorSprite_;
+  bool vectorReady_ = false;
   float fps_ = 0.0f;
 };
 

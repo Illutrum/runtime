@@ -7,6 +7,8 @@ set(ENGINE_ROOT ${CMAKE_SOURCE_DIR}/game-dev/engine)
 
 include(${ENGINE_ROOT}/cmake/EngineHelpers.cmake)
 include(${CMAKE_SOURCE_DIR}/game-dev/example-game/cmake/HotswapPlugins.cmake)
+include(${CMAKE_SOURCE_DIR}/game-dev/cmake/ThorVG.cmake)
+add_subdirectory(${GAME_ROOT}/src/view/thorvg-raster)
 
 if(NOT EMSCRIPTEN)
   set(VIEW_SO ${CMAKE_BINARY_DIR}/examples/libviz.so)
@@ -16,8 +18,8 @@ if(NOT EMSCRIPTEN)
     add_library(example_visualization_view SHARED ${GAME_ROOT}/src/view/ExampleView.cpp)
     configure_hotswap_plugin(example_visualization_view)
     set_target_properties(example_visualization_view PROPERTIES OUTPUT_NAME viz)
-    target_link_libraries(example_visualization_view PRIVATE engine_runtime)
-    add_dependencies(example_visualization_view engine_runtime)
+    target_link_libraries(example_visualization_view PRIVATE engine_runtime viz_thorvg)
+    add_dependencies(example_visualization_view engine_runtime viz_thorvg)
 
     add_custom_command(
       OUTPUT ${MANIFEST_PATH}
@@ -68,6 +70,7 @@ else()
     ${GAME_ROOT}/src/view/ExampleView.cpp
   )
   add_engine_to_game(example_visualization)
+  target_link_libraries(example_visualization PRIVATE viz_thorvg)
   target_include_directories(example_visualization PRIVATE
     ${GAME_ROOT}/src/shared
     ${ENGINE_ROOT}/modulemap
