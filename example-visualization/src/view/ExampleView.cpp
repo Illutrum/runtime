@@ -1,6 +1,9 @@
+#ifndef EMSCRIPTEN
+#include <GL/glew.h>
+#endif
 #include "View.hpp"
 #include "EngineHeaders.hpp"
-#include "ThorVGRaster.hpp"
+#include <fgfx/thorvg.hpp>
 
 #include <iomanip>
 #include <memory>
@@ -11,10 +14,6 @@ using namespace asset_manager;
 
 class ExampleView : public View {
 public:
-  ~ExampleView() override {
-    viz::ThorVGRaster::term();
-  }
-
   void init() override {
     TextureAsset::registerAssetType();
     MSDFFontAsset::registerAssetType();
@@ -29,7 +28,6 @@ public:
 
     vectorTex_ = fgfx::engine->createEmptyTexture(512, 512, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
     vectorSprite_ = fgfx::engine->getEmptySprite("thorvg_circle");
-    viz::ThorVGRaster::init();
   }
 
   void render(const void* snapshot, float delta) override {
@@ -50,7 +48,12 @@ public:
     mvp.multiply();
 
     if (vectorTex_ && vectorSprite_ && !vectorReady_) {
-      vectorReady_ = viz::ThorVGRaster::rasterTo(*vectorTex_);
+      if (fgfx::thorvg::begin(*vectorTex_)) {
+        float w = static_cast<float>(vectorTex_->width);
+        float h = static_cast<float>(vectorTex_->height);
+        fgfx::thorvg::addFilledCircle(w * 0.5f, h * 0.5f, w * 0.35f, h * 0.35f, 80, 180, 255, 255);
+        vectorReady_ = fgfx::thorvg::submit();
+      }
       if (vectorReady_) {
         vectorSprite_->setTextureFragment(
           vectorTex_->texture,
