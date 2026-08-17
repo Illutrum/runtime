@@ -52,6 +52,7 @@ public:
         float w = static_cast<float>(vectorTex_->width);
         float h = static_cast<float>(vectorTex_->height);
         fgfx::thorvg::addFilledCircle(w * 0.5f, h * 0.5f, w * 0.35f, h * 0.35f, 80, 180, 255, 255);
+        fgfx::thorvg::addFilledCircle(w * 0.8f, h * 0.5f, w * 0.35f, h * 0.35f, 255, 180, 255, 255);
         vectorReady_ = fgfx::thorvg::submit();
       }
       if (vectorReady_) {

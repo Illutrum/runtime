@@ -1,5 +1,6 @@
 #include "ViewModuleAsset.hpp"
 
+#include <AssetsManager.hpp>
 #include <iostream>
 #include <stdexcept>
 
@@ -24,6 +25,7 @@ namespace hotswap {
       if (destroyFn) destroyFn(instance);
       instance = nullptr;
     }
+    asset_manager::manager.dropLiveRequests();
     if (handle) {
       dlclose(handle);
       handle = nullptr;
