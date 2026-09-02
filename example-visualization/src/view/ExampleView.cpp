@@ -5,6 +5,7 @@
 #include "EngineHeaders.hpp"
 #include <fgfx/thorvg.hpp>
 
+#include <algorithm>
 #include <iomanip>
 #include <memory>
 #include <sstream>
@@ -46,6 +47,12 @@ public:
       .eyePosition = glm::vec3(0, 0, 20)
     };
     mvp.multiply();
+
+    int rasterSize = std::clamp(std::max(fgfx::engine->width, fgfx::engine->height), 256, 2048);
+    if (vectorTex_ && (vectorTex_->width != rasterSize || vectorTex_->height != rasterSize)) {
+      vectorTex_->resize(rasterSize, rasterSize);
+      vectorReady_ = false;
+    }
 
     if (vectorTex_ && vectorSprite_ && !vectorReady_) {
       if (fgfx::thorvg::begin(*vectorTex_)) {

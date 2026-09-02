@@ -61,6 +61,7 @@ namespace {
   }
 
   bool bindTarget(Texture& tex) {
+    attachStencil(tex);
     tvg::Result result = canvas->target(
       nullptr,
       nullptr,
@@ -73,22 +74,8 @@ namespace {
     if (result == tvg::Result::Success) {
       return true;
     }
-    fgfx_log("ThorVG target failed (%s), attaching stencil RBO", resultName(result));
-    attachStencil(tex);
-    result = canvas->target(
-      nullptr,
-      nullptr,
-      glContext,
-      static_cast<int32_t>(tex.framebuffer),
-      static_cast<uint32_t>(tex.width),
-      static_cast<uint32_t>(tex.height),
-      tvg::ColorSpace::ABGR8888S
-    );
-    if (result != tvg::Result::Success) {
-      fgfx_log("ThorVG target failed after stencil attach (%s)", resultName(result));
-      return false;
-    }
-    return true;
+    fgfx_log("ThorVG target failed after stencil attach (%s)", resultName(result));
+    return false;
   }
 
   void abortFrame() {
