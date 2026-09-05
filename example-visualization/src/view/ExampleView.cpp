@@ -119,15 +119,17 @@ public:
       msdfLayer_->reset();
       fontAsset->font->renderString(
         msdfLayer_.get(),
-        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 90.0f, 0)), glm::vec3(0.11f, 0.11f, 1)),
+        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 70.0f, 0)), glm::vec3(0.11f, 0.11f, 1)),
         glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
         fpsText.str()
       );
+      std::ostringstream debugText;
+      debugText << "resolution: " << fgfx::engine->width << "x" << fgfx::engine->height;
       fontAsset->font->renderString(
         msdfLayer_.get(),
-        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 82.0f, 0)), glm::vec3(0.07f, 0.07f, 1)),
+        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 62.0f, 0)), glm::vec3(0.07f, 0.07f, 1)),
         glm::vec4(0.85f, 1.0f, 0.7f, 1.0f),
-        "MSDF font overlay"
+        debugText.str()
       );
       msdfLayer_->upload();
       msdfLayer_->render(mvp);
