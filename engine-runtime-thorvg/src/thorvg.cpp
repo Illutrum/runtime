@@ -155,6 +155,7 @@ namespace {
     pass.colorTarget = tex;
     pass.viewportW = width;
     pass.viewportH = height;
+    pass.require(Feature::RasterizeToTexture);
     pass.externalCallback = [tex, width, height,
                              build = std::move(buildShapes)](RenderBackend&) {
       if (!begin(tex, width, height)) {

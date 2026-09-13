@@ -56,6 +56,7 @@ public:
       fgfx::RenderPass& tp = builder.beginPass(
         "thorvg_raster", vectorTex_->handle(),
         fgfx::LoadOp::Clear, fgfx::ClearValue{0, 0, 0, 0});
+      tp.opaque = true;
       fgfx::thorvg::record(tp, vectorTex_->handle(), rasterSize, rasterSize, [=] {
         float w = static_cast<float>(rasterSize);
         float h = static_cast<float>(rasterSize);
@@ -106,6 +107,7 @@ public:
 
     auto fontAsset = fontRequest_ ? fontRequest_->get() : nullptr;
     if (fontAsset && fontAsset->font) {
+      const bool compute = builder.backend().supports(fgfx::Feature::Compute);
       std::ostringstream fpsText;
       fpsText << "FPS: " << std::fixed << std::setprecision(0) << fps_;
       glyphBatch_->reset();
@@ -123,9 +125,26 @@ public:
                    glm::vec3(0.07f, 0.07f, 1)),
         glm::vec4(0.85f, 1.0f, 0.7f, 1.0f),
         debugText.str());
+      std::ostringstream featureText;
+      featureText << "backend: "
+                  << (builder.backend().type() == fgfx::BackendType::WebGPU ? "WebGPU" : "GL")
+                  << "  compute: " << (compute ? "yes" : "no");
+      fontAsset->font->renderString(
+        glyphBatch_.get(),
+        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 56.0f, 0)),
+                   glm::vec3(0.07f, 0.07f, 1)),
+        glm::vec4(0.85f, 1.0f, 0.7f, 1.0f),
+        featureText.str());
       glyphBatch_->record(pass, builder.context());
     }
 
+    builder.submitPass();
+
+    fgfx::RenderPass& computePass = builder.beginPass(
+      "compute_demo", builder.surfaceColor(), fgfx::LoadOp::Load, fgfx::ClearValue{});
+    computePass.require(fgfx::Feature::Compute);
+    computePass.kind = fgfx::PassKind::External;
+    computePass.externalCallback = [](fgfx::RenderBackend&) {};
     builder.submitPass();
   }
 
