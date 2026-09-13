@@ -11,13 +11,18 @@ class ExampleView : public View {
 public:
   void init() override {
     TextureAsset::registerAssetType();
+    MSDFFontAsset::registerAssetType();
     textureRequest_ = manager.request<TextureAsset>("assets/logo.png");
     if (textureRequest_ && textureRequest_->asset) {
       textureRequest_->asset->start();
     }
+    fontRequest_ = manager.request<MSDFFontAsset>("assets/ui");
+    if (fontRequest_ && fontRequest_->asset) {
+      fontRequest_->asset->start();
+    }
   }
 
-  void render(const void* snapshot, float delta) override {
+  void render(fgfx::FrameBuilder& builder, const void* snapshot, float delta) override {
     (void)delta;
     const auto* state = static_cast<const GameState*>(snapshot);
     if (!state) return;
@@ -30,35 +35,58 @@ public:
       .eyePosition = glm::vec3(0, 0, 20)
     };
     mvp.multiply();
+    builder.context().mvp = mvp;
 
-    glClearColor(0.31f, 0.52f, 0.16f, 1);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    if (!spriteLayer_) {
-      spriteLayer_ = fgfx::engine->createSpriteLayer();
+    if (!spriteBatch_) {
+      spriteBatch_ = std::make_shared<fgfx::SpriteBatch>(fgfx::engine.get());
     }
+    if (!glyphBatch_) {
+      glyphBatch_ = std::make_shared<fgfx::GlyphBatch>(fgfx::engine.get());
+    }
+
+    fgfx::ClearValue clear;
+    clear.r = 0.31f;
+    clear.g = 0.52f;
+    clear.b = 0.16f;
+    clear.a = 1.0f;
+    fgfx::RenderPass& pass = builder.beginPass("scene", builder.surfaceColor(),
+                                               fgfx::LoadOp::Clear, clear);
 
     auto texture = textureRequest_ ? textureRequest_->get() : nullptr;
     if (texture && texture->texture) {
       auto sprite = fgfx::engine->getSprite("assets/logo.png");
-      spriteLayer_->reset();
-      spriteLayer_->bufferSprite(
+      spriteBatch_->reset();
+      spriteBatch_->bufferSprite(
         sprite,
         glm::vec2(state->x, state->y),
         glm::vec4(state->renderColorR, state->renderColorG, state->renderColorB, 1.0f),
         5.0f,
         0.0f
       );
-      spriteLayer_->upload();
-      spriteLayer_->render(mvp);
+      spriteBatch_->record(pass, builder.context());
     }
+
+    auto fontAsset = fontRequest_ ? fontRequest_->get() : nullptr;
+    if (fontAsset && fontAsset->font) {
+      glyphBatch_->reset();
+      fontAsset->font->renderString(
+        glyphBatch_.get(),
+        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 70.0f, 0)),
+                   glm::vec3(0.11f, 0.11f, 1)),
+        glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+        "FAST GFX"
+      );
+      glyphBatch_->record(pass, builder.context());
+    }
+
+    builder.submitPass();
   }
 
 private:
   std::shared_ptr<AssetRequestT<TextureAsset>> textureRequest_;
-  std::shared_ptr<fgfx::SpriteLayer> spriteLayer_;
+  std::shared_ptr<AssetRequestT<MSDFFontAsset>> fontRequest_;
+  std::shared_ptr<fgfx::SpriteBatch> spriteBatch_;
+  std::shared_ptr<fgfx::GlyphBatch> glyphBatch_;
 };
 
 extern "C" {

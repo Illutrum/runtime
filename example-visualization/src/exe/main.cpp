@@ -38,11 +38,11 @@ int main() {
   host.viewBackend().attach(viewInstance);
 #endif
 
-  host.setFrameCallback([&host](float delta, const engine::RawInput& raw) {
+  host.setFrameCallback([&host](fgfx::FrameBuilder& builder, float delta, const engine::RawInput& raw) {
     (void)raw;
     auto* view = host.viewBackend().as<View>();
     if (!view) return;
-    view->render(nullptr, delta);
+    view->render(builder, nullptr, delta);
   });
 
 #ifndef EMSCRIPTEN

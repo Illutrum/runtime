@@ -10,10 +10,53 @@ function(apply_emscripten_webgl2_target TARGET)
     -sUSE_WEBGL2=1
     -sMIN_WEBGL_VERSION=2
     -sMAX_WEBGL_VERSION=2
-    "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,allocate,intArrayFromString"
+    "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,allocate,intArrayFromString,HEAPU8"
     "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite"
     "--post-js=${FGFX_ROOT}/js/emscripten-glue.js"
   )
+endfunction()
+
+function(ensure_emscripten_webgpu)
+  if(NOT EMSCRIPTEN)
+    return()
+  endif()
+  if(TARGET webgpu)
+    return()
+  endif()
+  set(WEBGPU_BACKEND "EMDAWNWEBGPU" CACHE STRING "" FORCE)
+  set(_saved_exe_linker_flags "${CMAKE_EXE_LINKER_FLAGS}")
+  add_subdirectory(
+    ${CMAKE_SOURCE_DIR}/game-dev/webgpu
+    ${CMAKE_BINARY_DIR}/_deps/webgpu-build
+  )
+  # project(webgpu) re-inits and can clear linker flags.
+  set(CMAKE_EXE_LINKER_FLAGS "${_saved_exe_linker_flags}"
+      CACHE STRING "exe linker flags" FORCE)
+endfunction()
+
+function(apply_emscripten_webgpu_target TARGET)
+  if(NOT EMSCRIPTEN)
+    return()
+  endif()
+  ensure_emscripten_webgpu()
+  target_compile_definitions(${TARGET} PRIVATE FGFX_BACKEND_WEBGPU)
+  target_link_libraries(${TARGET} PRIVATE webgpu)
+  target_link_options(${TARGET} PRIVATE
+    "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,allocate,intArrayFromString,HEAPU8"
+    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite,_fgfx_createTextureRGBA"
+    "--post-js=${FGFX_ROOT}/js/emscripten-glue.js"
+  )
+endfunction()
+
+function(apply_emscripten_backend_target TARGET)
+  if(NOT EMSCRIPTEN)
+    return()
+  endif()
+  if(FGFX_BACKEND STREQUAL "WebGPU")
+    apply_emscripten_webgpu_target(${TARGET})
+  else()
+    apply_emscripten_webgl2_target(${TARGET})
+  endif()
 endfunction()
 
 function(add_engine_to_game TARGET)
@@ -70,8 +113,14 @@ function(add_engine_to_game TARGET)
     )
     aux_source_directory(${FGFX_ROOT}/src FGFX_ENGINE_SOURCES)
     list(APPEND FGFX_ENGINE_SOURCES ${FGFX_ROOT}/src/io/FileLoader.cpp)
+    list(APPEND FGFX_ENGINE_SOURCES ${FGFX_ROOT}/src/backend/WebGLBackend.cpp)
+    if(FGFX_BACKEND STREQUAL "WebGPU")
+      list(APPEND FGFX_ENGINE_SOURCES
+        ${FGFX_ROOT}/src/backend/WebGPUBackend.cpp
+        ${FGFX_ROOT}/src/backend/WebGPUBackendWasm.cpp)
+    endif()
     target_sources(${TARGET} PRIVATE ${FGFX_ENGINE_SOURCES})
-    apply_emscripten_webgl2_target(${TARGET})
+    apply_emscripten_backend_target(${TARGET})
   endif()
 endfunction()
 

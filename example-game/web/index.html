@@ -20,8 +20,27 @@
 <body>
 
 <canvas id="fgfx_canvas"></canvas>
+<script src="backend.js"></script>
 <script src="runtime-js-compiled.js"></script>
-<script src="example_game.js" type="application/javascript"></script>
+<script>
+(async () => {
+  window.Module = window.Module || {};
+  if (window.FGFX_BACKEND_WEBGPU) {
+    if (!navigator.gpu) {
+      throw new Error('WebGPU is not available in this browser');
+    }
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) {
+      throw new Error('No WebGPU adapter');
+    }
+    window.Module.preinitializedWebGPUDevice = await adapter.requestDevice();
+  }
+  const script = document.createElement('script');
+  script.src = 'example_game.js';
+  script.type = 'application/javascript';
+  document.body.appendChild(script);
+})();
+</script>
 
 </body>
 </html>

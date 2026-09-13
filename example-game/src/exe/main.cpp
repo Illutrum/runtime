@@ -63,7 +63,7 @@ int main() {
   host.viewBackend().attach(viewInstance);
 #endif
 
-  host.setFrameCallback([&host](float delta, const engine::RawInput& raw) {
+  host.setFrameCallback([&host](fgfx::FrameBuilder& builder, float delta, const engine::RawInput& raw) {
     auto* model = host.modelBackend().as<Model>();
     auto* view = host.viewBackend().as<View>();
     if (!model || !view) return;
@@ -75,7 +75,7 @@ int main() {
     }
 
     model->update(input, delta);
-    view->render(model->snapshot(), delta);
+    view->render(builder, model->snapshot(), delta);
   });
 
 #ifndef EMSCRIPTEN

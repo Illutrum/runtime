@@ -17,9 +17,9 @@ namespace asset_manager::ui {
 }
 
 namespace fgfx {
-  class SpriteLayer;
-  class MSDFLayer;
-  class PolygonLayer;
+  class GlyphBatch;
+  class PolygonBatch;
+  class FrameBuilder;
 }
 
 #ifdef __HOTSWAP
@@ -45,7 +45,7 @@ namespace engine {
 
   class GameHost {
   public:
-    using FrameCallback = std::function<void(float delta, const RawInput& input)>;
+    using FrameCallback = std::function<void(fgfx::FrameBuilder&, float delta, const RawInput& input)>;
 
     explicit GameHost(GameHostConfig config);
     ~GameHost();
@@ -65,7 +65,7 @@ namespace engine {
     bool resetRequested() const { return input_.current().resetRequested; }
     void clearResetRequest();
 
-    void renderLoadingUI();
+    void renderLoadingUI(fgfx::FrameBuilder& builder);
     void setErrorMessage(const std::string& message);
 
     void bindBackendsFromAssets();
@@ -94,9 +94,8 @@ namespace engine {
     std::shared_ptr<asset_manager::LoadTask> bootstrapLoadTask_;
     std::shared_ptr<asset_manager::MSDFFontAsset> uiFontAsset_;
     std::shared_ptr<asset_manager::ui::LoadingScreen> loadingScreen_;
-    std::shared_ptr<fgfx::SpriteLayer> spriteLayer_;
-    std::shared_ptr<fgfx::MSDFLayer> msdfLayer_;
-    std::shared_ptr<fgfx::PolygonLayer> barLayer_;
+    std::shared_ptr<fgfx::GlyphBatch> glyphBatch_;
+    std::shared_ptr<fgfx::PolygonBatch> barBatch_;
 
     bool loading_ = true;
     bool moduleFailed_ = false;

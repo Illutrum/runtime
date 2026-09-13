@@ -14,14 +14,14 @@ int main() {
 
   engine::GameHost host(config);
   host.init();
-  host.setFrameCallback([&host](float delta, const engine::RawInput& raw) {
+  host.setFrameCallback([&host](fgfx::FrameBuilder& builder, float delta, const engine::RawInput& raw) {
     auto* model = host.modelBackend().as<Model>();
     auto* view = host.viewBackend().as<View>();
     if (!model || !view) return;
     Input input;
     input.reset = raw.resetRequested;
     model->update(input, delta);
-    view->render(model->snapshot(), delta);
+    view->render(builder, model->snapshot(), delta);
   });
   host.run();
   host.destroy();

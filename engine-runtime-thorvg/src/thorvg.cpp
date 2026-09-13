@@ -1,16 +1,25 @@
 #include <fgfx/thorvg.hpp>
 
-#include "Texture.hpp"
 #include <fastgfx.hpp>
 #include <thorvg.h>
 
+#ifdef FGFX_BACKEND_WEBGPU
+#include "backend/WebGPUBackend.hpp"
+#else
+#include "Texture.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten/html5_webgl.h>
+#endif
 #endif
 
 namespace fgfx::thorvg {
 namespace {
 
+#ifdef FGFX_BACKEND_WEBGPU
+  tvg::WgCanvas* canvas = nullptr;
+  bool initialized = false;
+  bool frameOpen = false;
+#else
   tvg::GlCanvas* canvas = nullptr;
   bool initialized = false;
   GLuint stencilRbo = 0;
@@ -19,6 +28,7 @@ namespace {
 #ifndef EMSCRIPTEN
   void (*clearColorFn)(float, float, float, float) = nullptr;
   void (*clearFn)(unsigned int) = nullptr;
+#endif
 #endif
 
   const char* resultName(tvg::Result result) {
@@ -33,6 +43,7 @@ namespace {
     }
   }
 
+#ifndef FGFX_BACKEND_WEBGPU
   void* currentContext() {
 #ifdef EMSCRIPTEN
     return reinterpret_cast<void*>(emscripten_webgl_get_current_context());
@@ -77,12 +88,17 @@ namespace {
     fgfx_log("ThorVG target failed after stencil attach (%s)", resultName(result));
     return false;
   }
+#endif
 
   void abortFrame() {
+#ifdef FGFX_BACKEND_WEBGPU
+    frameOpen = false;
+#else
     if (frameTex) {
       frameTex->endRender(false);
       frameTex = nullptr;
     }
+#endif
   }
 
   void term() {
@@ -92,6 +108,7 @@ namespace {
     abortFrame();
     delete canvas;
     canvas = nullptr;
+#ifndef FGFX_BACKEND_WEBGPU
     glContext = nullptr;
 #ifndef EMSCRIPTEN
     clearColorFn = nullptr;
@@ -101,6 +118,7 @@ namespace {
       glDeleteRenderbuffers(1, &stencilRbo);
       stencilRbo = 0;
     }
+#endif
     tvg::Initializer::term();
     initialized = false;
   }
@@ -115,6 +133,14 @@ namespace {
       fgfx_log("ThorVG Initializer::init failed (%s)", resultName(result));
       return false;
     }
+#ifdef FGFX_BACKEND_WEBGPU
+    canvas = tvg::WgCanvas::gen();
+    if (!canvas) {
+      fgfx_log("ThorVG WgCanvas::gen failed");
+      tvg::Initializer::term();
+      return false;
+    }
+#else
     canvas = tvg::GlCanvas::gen();
     if (!canvas) {
       fgfx_log("ThorVG GlCanvas::gen failed");
@@ -146,6 +172,7 @@ namespace {
       return false;
     }
 #endif
+#endif
 
     initialized = true;
     fgfx::addShutdownHook(&term);
@@ -155,6 +182,42 @@ namespace {
 
 }
 
+#ifdef FGFX_BACKEND_WEBGPU
+  bool begin(TextureHandle tex, int width, int height) {
+    if (!ensureInitialized()) {
+      return false;
+    }
+    if (frameOpen) {
+      fgfx_log("ThorVG begin skipped: frame already open");
+      return false;
+    }
+    auto* be = dynamic_cast<WebGPUBackend*>(engine->getBackend());
+    if (!be) {
+      fgfx_log("ThorVG begin skipped: WebGPUBackend missing");
+      return false;
+    }
+    WGPUTexture rawTex = be->wgpuTexture(tex);
+    if (!rawTex) {
+      fgfx_log("ThorVG begin skipped: null WGPUTexture");
+      return false;
+    }
+    tvg::Result result = canvas->target(
+      be->wgpuDevice(),
+      be->wgpuInstance(),
+      rawTex,
+      static_cast<uint32_t>(width),
+      static_cast<uint32_t>(height),
+      tvg::ColorSpace::ABGR8888S,
+      1
+    );
+    if (result != tvg::Result::Success) {
+      fgfx_log("ThorVG WgCanvas::target failed (%s)", resultName(result));
+      return false;
+    }
+    frameOpen = true;
+    return true;
+  }
+#else
   bool begin(Texture& tex) {
     if (!ensureInitialized()) {
       return false;
@@ -174,10 +237,15 @@ namespace {
     frameTex = &tex;
     return true;
   }
+#endif
 
   void addFilledCircle(float cx, float cy, float rx, float ry,
                        uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+#ifdef FGFX_BACKEND_WEBGPU
+    if (!frameOpen || !canvas) {
+#else
     if (!frameTex || !canvas) {
+#endif
       fgfx_log("ThorVG addFilledCircle skipped: no open frame");
       return;
     }
@@ -192,7 +260,11 @@ namespace {
   }
 
   bool submit() {
+#ifdef FGFX_BACKEND_WEBGPU
+    if (!frameOpen || !canvas) {
+#else
     if (!frameTex || !canvas) {
+#endif
       fgfx_log("ThorVG submit skipped: no open frame");
       return false;
     }
@@ -216,8 +288,12 @@ namespace {
       return false;
     }
 
+#ifdef FGFX_BACKEND_WEBGPU
+    frameOpen = false;
+#else
     frameTex->endRender(false);
     frameTex = nullptr;
+#endif
     return true;
   }
 

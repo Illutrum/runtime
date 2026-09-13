@@ -25,6 +25,12 @@ target_include_directories(engine_runtime PUBLIC
 
 target_compile_definitions(engine_runtime PUBLIC __USE_OPENGL)
 
+if(FGFX_BACKEND STREQUAL "WebGPU")
+  include(${CMAKE_SOURCE_DIR}/game-dev/cmake/Dawn.cmake)
+  target_link_libraries(engine_runtime PUBLIC webgpu)
+  target_compile_definitions(engine_runtime PUBLIC FGFX_BACKEND_WEBGPU)
+endif()
+
 target_link_libraries(engine_runtime PUBLIC GL png z glfw GLEW dl)
 
 apply_p2996_target(engine_runtime)

@@ -10,6 +10,7 @@
 #include <asset_manager.hpp>
 #include <asset_manager_fgfx.hpp>
 #include <fastgfx.hpp>
+// FrameGraph.hpp (FrameBuilder) is pulled in via fastgfx.hpp.
 
 #ifdef __HOTSWAP
 #include <hotswap/BuildOrchestrator.hpp>
@@ -68,10 +69,8 @@ namespace engine {
     hotswap::ViewModuleAsset::registerAssetType();
 #endif
 
-    spriteLayer_ = fgfx::engine->createSpriteLayer();
-    msdfLayer_ = fgfx::engine->createMSDFLayer();
-    barLayer_ = fgfx::engine->createPolygonLayer();
-
+    glyphBatch_ = std::make_shared<fgfx::GlyphBatch>(fgfx::engine.get());
+    barBatch_ = std::make_shared<fgfx::PolygonBatch>(fgfx::engine.get());
     setupLoadingUI();
     bindGlfwInput(this);
     setupRenderLoop();
@@ -114,7 +113,7 @@ namespace engine {
       return;
     }
 
-    loadingScreen_ = std::make_shared<asset_manager::ui::LoadingScreen>(msdfLayer_, uiFont, barLayer_);
+    loadingScreen_ = std::make_shared<asset_manager::ui::LoadingScreen>(glyphBatch_, uiFont, barBatch_);
     loadTask_ = std::make_shared<asset_manager::LoadTask>("Game modules");
 
 #ifdef __HOTSWAP
@@ -152,7 +151,7 @@ namespace engine {
 
     auto uiFont = uiFontAsset_ ? uiFontAsset_->font : nullptr;
     if (uiFont && !loadingScreen_) {
-      loadingScreen_ = std::make_shared<asset_manager::ui::LoadingScreen>(msdfLayer_, uiFont, barLayer_);
+      loadingScreen_ = std::make_shared<asset_manager::ui::LoadingScreen>(glyphBatch_, uiFont, barBatch_);
     }
     if (loadingScreen_) {
       loadingScreen_->show(task);
@@ -162,20 +161,23 @@ namespace engine {
   void GameHost::setupRenderLoop() {
     fgfx::engine->setRenderFunction([this](double time, float delta) {
       (void)time;
+      (void)delta;
       asset_manager::manager.update(frame_++);
       input_.beginFrame();
 
 #ifdef __HOTSWAP
       pollReload();
 #endif
+    });
 
+    fgfx::engine->setSceneRenderFunction([this](fgfx::FrameBuilder& builder, double time, float delta) {
+      (void)time;
       if (loading_ || moduleFailed_ || !showScene_) {
-        renderLoadingUI();
+        renderLoadingUI(builder);
         return;
       }
-
       if (frameCallback_) {
-        frameCallback_(delta, input_.current());
+        frameCallback_(builder, delta, input_.current());
       }
     });
   }
@@ -197,6 +199,9 @@ namespace engine {
     if (hotswap_->viewAsset) hotswap_->viewAsset->unload();
     if (hotswap_->modelAsset) hotswap_->modelAsset->unload();
 #endif
+    loadingScreen_.reset();
+    glyphBatch_.reset();
+    barBatch_.reset();
     fgfx::destroy();
   }
 

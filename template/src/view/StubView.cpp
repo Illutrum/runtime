@@ -5,7 +5,8 @@
 class StubView : public View {
 public:
   void init() override {}
-  void render(const void* snapshot, float delta) override {
+  void render(fgfx::FrameBuilder& builder, const void* snapshot, float delta) override {
+    (void)builder;
     (void)snapshot;
     (void)delta;
     glClearColor(0.08f, 0.1f, 0.14f, 1);

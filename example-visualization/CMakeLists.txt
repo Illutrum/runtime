@@ -84,6 +84,13 @@ else()
   set_target_properties(example_visualization PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${VIZ_OUT_DIR}
   )
+  if(FGFX_BACKEND STREQUAL "WebGPU")
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/backend.js
+      "window.FGFX_BACKEND_WEBGPU = true;\n")
+  else()
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/backend.js
+      "window.FGFX_BACKEND_WEBGPU = false;\n")
+  endif()
   add_custom_command(TARGET example_visualization POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
       ${GAME_ROOT}/web/index.html
@@ -91,6 +98,9 @@ else()
     COMMAND ${CMAKE_COMMAND} -E copy
       ${FGFX_ROOT}/runtime-js-compiled.js
       ${VIZ_OUT_DIR}/runtime-js-compiled.js
+    COMMAND ${CMAKE_COMMAND} -E copy
+      ${CMAKE_CURRENT_BINARY_DIR}/backend.js
+      ${VIZ_OUT_DIR}/backend.js
     COMMAND ${CMAKE_COMMAND} -E make_directory ${VIZ_OUT_DIR}/assets
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
       ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/logo.png

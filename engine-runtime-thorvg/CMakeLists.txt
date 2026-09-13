@@ -1,5 +1,10 @@
 # Isolated so CMAKE_CXX_FLAGS can drop reflection without affecting plugins / wasm exe.
 # Keep c++26 (Texture.hpp pulls promise.hpp concepts); only ThorVG itself is compiled as C++17.
+if(EMSCRIPTEN AND FGFX_BACKEND STREQUAL "WebGPU")
+  include(${CMAKE_SOURCE_DIR}/game-dev/engine/cmake/EngineHelpers.cmake)
+  ensure_emscripten_webgpu()
+endif()
+
 include(${CMAKE_SOURCE_DIR}/game-dev/cmake/ThorVG.cmake)
 
 set(_thorvg_cxx_flags "${CMAKE_CXX_FLAGS}")
@@ -45,4 +50,13 @@ if(NOT EMSCRIPTEN)
   add_dependencies(engine_runtime_thorvg engine_runtime)
 else()
   target_link_libraries(engine_runtime_thorvg PUBLIC thorvg)
+endif()
+
+if(FGFX_BACKEND STREQUAL "WebGPU")
+  target_compile_definitions(engine_runtime_thorvg PRIVATE FGFX_BACKEND_WEBGPU)
+  if(NOT EMSCRIPTEN)
+    target_link_libraries(engine_runtime_thorvg PRIVATE webgpu)
+  else()
+    target_link_libraries(engine_runtime_thorvg PUBLIC webgpu)
+  endif()
 endif()
