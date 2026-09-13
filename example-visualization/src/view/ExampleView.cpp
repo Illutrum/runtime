@@ -1,6 +1,3 @@
-#if !defined(EMSCRIPTEN) && !defined(FGFX_BACKEND_WEBGPU)
-#include <GL/glew.h>
-#endif
 #include "View.hpp"
 #include "EngineHeaders.hpp"
 #include <fgfx/thorvg.hpp>
@@ -27,19 +24,7 @@ public:
       fontRequest_->asset->start();
     }
 
-#ifdef FGFX_BACKEND_WEBGPU
-    fgfx::TextureDesc desc;
-    desc.width = 512;
-    desc.height = 512;
-    // ThorVG's WgCanvas blit pipeline is compiled for BGRA8Unorm (context.format).
-    desc.format = fgfx::PixelFormat::BGRA8Unorm;
-    desc.generateMipmaps = false;
-    vectorTex_ = fgfx::engine->getBackend()->createTexture(desc);
-    vectorTexW_ = 512;
-    vectorTexH_ = 512;
-#else
-    vectorTex_ = fgfx::engine->createEmptyTexture(512, 512, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
-#endif
+    vectorTex_ = fgfx::engine->createEmptyTexture(512, 512, fgfx::PixelFormat::BGRA8Unorm);
     vectorSprite_ = fgfx::engine->getEmptySprite("thorvg_circle");
   }
 
@@ -62,70 +47,28 @@ public:
     builder.context().mvp = mvp;
 
     int rasterSize = std::clamp(std::max(fgfx::engine->width, fgfx::engine->height), 256, 2048);
-#ifdef FGFX_BACKEND_WEBGPU
-    if (vectorTex_ != fgfx::kNullTexture &&
-        (vectorTexW_ != rasterSize || vectorTexH_ != rasterSize)) {
-      fgfx::engine->getBackend()->destroyTexture(vectorTex_);
-      fgfx::TextureDesc desc;
-      desc.width = rasterSize;
-      desc.height = rasterSize;
-      desc.format = fgfx::PixelFormat::BGRA8Unorm;
-      desc.generateMipmaps = false;
-      vectorTex_ = fgfx::engine->getBackend()->createTexture(desc);
-      vectorTexW_ = rasterSize;
-      vectorTexH_ = rasterSize;
-      vectorReady_ = false;
-    }
-
-    if (vectorTex_ != fgfx::kNullTexture && vectorSprite_ && !vectorReady_) {
-      if (fgfx::thorvg::begin(vectorTex_, rasterSize, rasterSize)) {
-        float w = static_cast<float>(rasterSize);
-        float h = static_cast<float>(rasterSize);
-        fgfx::thorvg::addFilledCircle(w * 0.5f, h * 0.5f, w * 0.35f, h * 0.35f, 80, 180, 255, 255);
-        fgfx::thorvg::addFilledCircle(w * 0.8f, h * 0.5f, w * 0.35f, h * 0.35f, 255, 180, 255, 255);
-        vectorReady_ = fgfx::thorvg::submit();
-      }
-      if (vectorReady_) {
-        vectorSprite_->setTextureFragment(
-          static_cast<int>(vectorTex_),
-          0.0f,
-          1.0f,
-          1.0f,
-          0.0f,
-          rasterSize,
-          rasterSize,
-          true
-        );
-      }
-    }
-#else
     if (vectorTex_ && (vectorTex_->width != rasterSize || vectorTex_->height != rasterSize)) {
-      vectorTex_->resize(rasterSize, rasterSize);
+      vectorTex_->recreate(rasterSize, rasterSize, vectorTex_->format);
       vectorReady_ = false;
     }
 
     if (vectorTex_ && vectorSprite_ && !vectorReady_) {
-      if (fgfx::thorvg::begin(*vectorTex_)) {
-        float w = static_cast<float>(vectorTex_->width);
-        float h = static_cast<float>(vectorTex_->height);
+      fgfx::RenderPass& tp = builder.beginPass(
+        "thorvg_raster", vectorTex_->handle(),
+        fgfx::LoadOp::Clear, fgfx::ClearValue{0, 0, 0, 0});
+      fgfx::thorvg::record(tp, vectorTex_->handle(), rasterSize, rasterSize, [=] {
+        float w = static_cast<float>(rasterSize);
+        float h = static_cast<float>(rasterSize);
         fgfx::thorvg::addFilledCircle(w * 0.5f, h * 0.5f, w * 0.35f, h * 0.35f, 80, 180, 255, 255);
         fgfx::thorvg::addFilledCircle(w * 0.8f, h * 0.5f, w * 0.35f, h * 0.35f, 255, 180, 255, 255);
-        vectorReady_ = fgfx::thorvg::submit();
-      }
-      if (vectorReady_) {
-        vectorSprite_->setTextureFragment(
-          vectorTex_->texture,
-          0.0f,
-          1.0f,
-          1.0f,
-          0.0f,
-          vectorTex_->width,
-          vectorTex_->height,
-          true
-        );
-      }
+      });
+      builder.submitPass();
+      vectorReady_ = true;
+      vectorSprite_->setTextureFragment(
+        static_cast<int>(vectorTex_->handle()),
+        0.0f, 1.0f, 1.0f, 0.0f,
+        rasterSize, rasterSize, true);
     }
-#endif
 
     if (!spriteBatch_) {
       spriteBatch_ = std::make_shared<fgfx::SpriteBatch>(fgfx::engine.get());
@@ -148,20 +91,16 @@ public:
         vectorSprite_,
         glm::vec2(-8.0f, 0.0f),
         glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-        6.0f,
-        0.0f
-      );
+        6.0f, 0.0f);
     }
     auto texture = textureRequest_ ? textureRequest_->get() : nullptr;
-    if (texture && texture->texture) {
+    if (texture && texture->texture && texture->texture->initialized) {
       auto sprite = fgfx::engine->getSprite("assets/logo.png");
       spriteBatch_->bufferSprite(
         sprite,
         glm::vec2(0.0f, 0.0f),
         glm::vec4(0.4f, 0.9f, 0.5f, 1.0f),
-        6.0f,
-        0.0f
-      );
+        6.0f, 0.0f);
     }
     spriteBatch_->record(pass, builder.context());
 
@@ -172,18 +111,18 @@ public:
       glyphBatch_->reset();
       fontAsset->font->renderString(
         glyphBatch_.get(),
-        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 70.0f, 0)), glm::vec3(0.11f, 0.11f, 1)),
+        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 70.0f, 0)),
+                   glm::vec3(0.11f, 0.11f, 1)),
         glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-        fpsText.str()
-      );
+        fpsText.str());
       std::ostringstream debugText;
       debugText << "resolution: " << fgfx::engine->width << "x" << fgfx::engine->height;
       fontAsset->font->renderString(
         glyphBatch_.get(),
-        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 62.0f, 0)), glm::vec3(0.07f, 0.07f, 1)),
+        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 62.0f, 0)),
+                   glm::vec3(0.07f, 0.07f, 1)),
         glm::vec4(0.85f, 1.0f, 0.7f, 1.0f),
-        debugText.str()
-      );
+        debugText.str());
       glyphBatch_->record(pass, builder.context());
     }
 
@@ -195,13 +134,7 @@ private:
   std::shared_ptr<AssetRequestT<MSDFFontAsset>> fontRequest_;
   std::shared_ptr<fgfx::SpriteBatch> spriteBatch_;
   std::shared_ptr<fgfx::GlyphBatch> glyphBatch_;
-#ifdef FGFX_BACKEND_WEBGPU
-  fgfx::TextureHandle vectorTex_ = fgfx::kNullTexture;
-  int vectorTexW_ = 0;
-  int vectorTexH_ = 0;
-#else
   std::shared_ptr<fgfx::Texture> vectorTex_;
-#endif
   std::shared_ptr<fgfx::Sprite> vectorSprite_;
   bool vectorReady_ = false;
   float fps_ = 0.0f;

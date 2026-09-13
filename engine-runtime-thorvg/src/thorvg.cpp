@@ -6,7 +6,7 @@
 #ifdef FGFX_BACKEND_WEBGPU
 #include "backend/WebGPUBackend.hpp"
 #else
-#include "Texture.hpp"
+#include "backend/WebGLBackend.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten/html5_webgl.h>
 #endif
@@ -17,19 +17,16 @@ namespace {
 
 #ifdef FGFX_BACKEND_WEBGPU
   tvg::WgCanvas* canvas = nullptr;
-  bool initialized = false;
-  bool frameOpen = false;
 #else
   tvg::GlCanvas* canvas = nullptr;
-  bool initialized = false;
-  GLuint stencilRbo = 0;
   void* glContext = nullptr;
-  Texture* frameTex = nullptr;
 #ifndef EMSCRIPTEN
   void (*clearColorFn)(float, float, float, float) = nullptr;
   void (*clearFn)(unsigned int) = nullptr;
 #endif
 #endif
+  bool initialized = false;
+  bool frameOpen = false;
 
   const char* resultName(tvg::Result result) {
     switch (result) {
@@ -61,44 +58,18 @@ namespace {
     clearFn(GL_COLOR_BUFFER_BIT);
 #endif
   }
-
-  void attachStencil(Texture& tex) {
-    if (stencilRbo == 0) {
-      glGenRenderbuffers(1, &stencilRbo);
-    }
-    glBindRenderbuffer(GL_RENDERBUFFER, stencilRbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, tex.width, tex.height);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, stencilRbo);
-  }
-
-  bool bindTarget(Texture& tex) {
-    attachStencil(tex);
-    tvg::Result result = canvas->target(
-      nullptr,
-      nullptr,
-      glContext,
-      static_cast<int32_t>(tex.framebuffer),
-      static_cast<uint32_t>(tex.width),
-      static_cast<uint32_t>(tex.height),
-      tvg::ColorSpace::ABGR8888S
-    );
-    if (result == tvg::Result::Success) {
-      return true;
-    }
-    fgfx_log("ThorVG target failed after stencil attach (%s)", resultName(result));
-    return false;
-  }
 #endif
 
   void abortFrame() {
-#ifdef FGFX_BACKEND_WEBGPU
-    frameOpen = false;
-#else
-    if (frameTex) {
-      frameTex->endRender(false);
-      frameTex = nullptr;
+    if (!frameOpen) {
+      return;
+    }
+#ifndef FGFX_BACKEND_WEBGPU
+    if (auto* be = dynamic_cast<WebGLBackend*>(engine->getBackend())) {
+      be->unbindColorTarget();
     }
 #endif
+    frameOpen = false;
   }
 
   void term() {
@@ -114,10 +85,6 @@ namespace {
     clearColorFn = nullptr;
     clearFn = nullptr;
 #endif
-    if (stencilRbo != 0) {
-      glDeleteRenderbuffers(1, &stencilRbo);
-      stencilRbo = 0;
-    }
 #endif
     tvg::Initializer::term();
     initialized = false;
@@ -182,7 +149,22 @@ namespace {
 
 }
 
-#ifdef FGFX_BACKEND_WEBGPU
+  void record(RenderPass& pass, TextureHandle tex, int width, int height,
+              std::function<void()> buildShapes) {
+    pass.kind = PassKind::External;
+    pass.colorTarget = tex;
+    pass.viewportW = width;
+    pass.viewportH = height;
+    pass.externalCallback = [tex, width, height,
+                             build = std::move(buildShapes)](RenderBackend&) {
+      if (!begin(tex, width, height)) {
+        return;
+      }
+      build();
+      submit();
+    };
+  }
+
   bool begin(TextureHandle tex, int width, int height) {
     if (!ensureInitialized()) {
       return false;
@@ -191,6 +173,7 @@ namespace {
       fgfx_log("ThorVG begin skipped: frame already open");
       return false;
     }
+#ifdef FGFX_BACKEND_WEBGPU
     auto* be = dynamic_cast<WebGPUBackend*>(engine->getBackend());
     if (!be) {
       fgfx_log("ThorVG begin skipped: WebGPUBackend missing");
@@ -214,38 +197,38 @@ namespace {
       fgfx_log("ThorVG WgCanvas::target failed (%s)", resultName(result));
       return false;
     }
+#else
+    auto* be = dynamic_cast<WebGLBackend*>(engine->getBackend());
+    if (!be) {
+      fgfx_log("ThorVG begin skipped: WebGLBackend missing");
+      return false;
+    }
+    GLuint fbo = be->ensureFramebuffer(tex);
+    be->bindColorTarget(tex, width, height);
+    be->attachDepthStencil(width, height);
+    tvg::Result result = canvas->target(
+      nullptr,
+      nullptr,
+      glContext,
+      static_cast<int32_t>(fbo),
+      static_cast<uint32_t>(width),
+      static_cast<uint32_t>(height),
+      tvg::ColorSpace::ABGR8888S
+    );
+    if (result != tvg::Result::Success) {
+      fgfx_log("ThorVG target failed after stencil attach (%s)", resultName(result));
+      be->unbindColorTarget();
+      return false;
+    }
+    clearRgba(0.0f, 0.0f, 0.0f, 0.0f);
+#endif
     frameOpen = true;
     return true;
   }
-#else
-  bool begin(Texture& tex) {
-    if (!ensureInitialized()) {
-      return false;
-    }
-    if (frameTex) {
-      fgfx_log("ThorVG begin skipped: frame already open");
-      return false;
-    }
-
-    tex.beginRender();
-    if (!bindTarget(tex)) {
-      tex.endRender(false);
-      return false;
-    }
-
-    clearRgba(0.0f, 0.0f, 0.0f, 0.0f);
-    frameTex = &tex;
-    return true;
-  }
-#endif
 
   void addFilledCircle(float cx, float cy, float rx, float ry,
                        uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-#ifdef FGFX_BACKEND_WEBGPU
     if (!frameOpen || !canvas) {
-#else
-    if (!frameTex || !canvas) {
-#endif
       fgfx_log("ThorVG addFilledCircle skipped: no open frame");
       return;
     }
@@ -260,11 +243,7 @@ namespace {
   }
 
   bool submit() {
-#ifdef FGFX_BACKEND_WEBGPU
     if (!frameOpen || !canvas) {
-#else
-    if (!frameTex || !canvas) {
-#endif
       fgfx_log("ThorVG submit skipped: no open frame");
       return false;
     }
@@ -288,12 +267,12 @@ namespace {
       return false;
     }
 
-#ifdef FGFX_BACKEND_WEBGPU
-    frameOpen = false;
-#else
-    frameTex->endRender(false);
-    frameTex = nullptr;
+#ifndef FGFX_BACKEND_WEBGPU
+    if (auto* be = dynamic_cast<WebGLBackend*>(engine->getBackend())) {
+      be->unbindColorTarget();
+    }
 #endif
+    frameOpen = false;
     return true;
   }
 
