@@ -24,7 +24,14 @@ public:
       fontRequest_->asset->start();
     }
 
-    vectorTex_ = fgfx::engine->createEmptyTexture(512, 512, fgfx::PixelFormat::BGRA8Unorm);
+    auto format = fgfx::PixelFormat::RGBA8Unorm;
+    if (fgfx::engine->getBackend() &&
+        fgfx::engine->getBackend()->type() == fgfx::BackendType::WebGPU) {
+      // WgCanvas blit pipeline is BGRA8Unorm. Sampling a BGRA texture already
+      // returns RGB, so no fragment swizzle.
+      format = fgfx::PixelFormat::BGRA8Unorm;
+    }
+    vectorTex_ = fgfx::engine->createEmptyTexture(512, 512, format);
     vectorSprite_ = fgfx::engine->getEmptySprite("thorvg_circle");
   }
 
@@ -100,7 +107,7 @@ public:
       spriteBatch_->bufferSprite(
         sprite,
         glm::vec2(0.0f, 0.0f),
-        glm::vec4(0.4f, 0.9f, 0.5f, 1.0f),
+        glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
         6.0f, 0.0f);
     }
     spriteBatch_->record(pass, builder.context());

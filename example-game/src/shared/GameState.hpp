@@ -6,9 +6,9 @@ struct GameState {
   float y = 0.0f;
   float speed = 120.0f;
   int counter = 0;
-  float renderColorR = 0.4f;
-  float renderColorG = 0.9f;
-  float renderColorB = 0.5f;
+  float renderColorR = 1.0f;
+  float renderColorG = 1.0f;
+  float renderColorB = 1.0f;
 };
 
 #endif
