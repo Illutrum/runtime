@@ -243,6 +243,43 @@ namespace {
     }
   }
 
+  void clear() {
+    if (!canvas) {
+      return;
+    }
+    tvg::Result removed = canvas->remove();
+    if (removed != tvg::Result::Success) {
+      fgfx_log("ThorVG canvas->remove failed (%s)", resultName(removed));
+    }
+  }
+
+  void addSvg(const char* data, uint32_t size, float w, float h) {
+    if (!frameOpen || !canvas) {
+      fgfx_log("ThorVG addSvg skipped: no open frame");
+      return;
+    }
+    if (!data || size == 0) {
+      fgfx_log("ThorVG addSvg skipped: empty data");
+      return;
+    }
+    tvg::Picture* picture = tvg::Picture::gen();
+    tvg::Result loaded = picture->load(data, size, "svg", nullptr, true);
+    if (loaded != tvg::Result::Success) {
+      fgfx_log("ThorVG Picture::load(svg) failed (%s)", resultName(loaded));
+      tvg::Paint::rel(picture);
+      return;
+    }
+    tvg::Result sized = picture->size(w, h);
+    if (sized != tvg::Result::Success) {
+      fgfx_log("ThorVG Picture::size failed (%s)", resultName(sized));
+    }
+    tvg::Result added = canvas->add(picture);
+    if (added != tvg::Result::Success) {
+      fgfx_log("ThorVG canvas->add(svg) failed (%s)", resultName(added));
+      tvg::Paint::rel(picture);
+    }
+  }
+
   bool submit() {
     if (!frameOpen || !canvas) {
       fgfx_log("ThorVG submit skipped: no open frame");
