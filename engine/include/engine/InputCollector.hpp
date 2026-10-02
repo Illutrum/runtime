@@ -16,8 +16,11 @@ namespace engine {
     bool resetRequested = false;
   };
 
+  // Edge bits (keysJustPressed, mouseDelta, resetRequested) are filled by
+  // keyEvent / mouse* between frames. The game reads current() during the
+  // scene, then beginFrame() clears those edges for the next tick.
   class InputCollector {
-  public:
+    public:
     void beginFrame();
     void keyEvent(int key, int action);
     void mouseMove(double x, double y);

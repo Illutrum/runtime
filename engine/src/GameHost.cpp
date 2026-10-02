@@ -1,5 +1,6 @@
 #include <engine/Host.hpp>
 #include <engine/GlfwInputBinding.hpp>
+#include <engine/WasmInputBinding.hpp>
 
 #ifdef __USE_GLFW
 #define GLFW_INCLUDE_NONE
@@ -73,6 +74,7 @@ namespace engine {
     barBatch_ = std::make_shared<fgfx::PolygonBatch>(fgfx::engine.get());
     setupLoadingUI();
     bindGlfwInput(this);
+    bindWasmInput(this);
     setupRenderLoop();
 
 #ifdef __HOTSWAP
@@ -163,7 +165,6 @@ namespace engine {
       (void)time;
       (void)delta;
       asset_manager::manager.update(frame_++);
-      input_.beginFrame();
 
 #ifdef __HOTSWAP
       pollReload();
@@ -174,11 +175,13 @@ namespace engine {
       (void)time;
       if (loading_ || moduleFailed_ || !showScene_) {
         renderLoadingUI(builder);
+        input_.beginFrame();
         return;
       }
       if (frameCallback_) {
         frameCallback_(builder, delta, input_.current());
       }
+      input_.beginFrame();
     });
   }
 

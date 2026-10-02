@@ -11,7 +11,7 @@ function(apply_emscripten_webgl2_target TARGET)
     -sMIN_WEBGL_VERSION=2
     -sMAX_WEBGL_VERSION=2
     "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,allocate,intArrayFromString,HEAPU8"
-    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite"
+    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite,_fgfx_key_event,_fgfx_mouse_move,_fgfx_mouse_button"
     "--post-js=${FGFX_ROOT}/js/emscripten-glue.js"
   )
 endfunction()
@@ -43,7 +43,7 @@ function(apply_emscripten_webgpu_target TARGET)
   target_link_libraries(${TARGET} PRIVATE webgpu)
   target_link_options(${TARGET} PRIVATE
     "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,allocate,intArrayFromString,HEAPU8"
-    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite,_fgfx_createTextureRGBA"
+    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite,_fgfx_createTextureRGBA,_fgfx_key_event,_fgfx_mouse_move,_fgfx_mouse_button"
     "--post-js=${FGFX_ROOT}/js/emscripten-glue.js"
   )
 endfunction()
@@ -72,6 +72,8 @@ function(add_engine_to_game TARGET)
   )
   if(NOT EMSCRIPTEN)
     target_sources(${TARGET} PRIVATE ${ENGINE_ROOT}/src/GlfwInputBinding.cpp)
+  else()
+    target_sources(${TARGET} PRIVATE ${ENGINE_ROOT}/src/WasmInputBinding.cpp)
   endif()
 
   target_include_directories(${TARGET} PRIVATE
