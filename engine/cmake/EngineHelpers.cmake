@@ -6,12 +6,16 @@ function(apply_emscripten_webgl2_target TARGET)
   if(NOT EMSCRIPTEN)
     return()
   endif()
+  set(_exports "_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite,_fgfx_key_event,_fgfx_mouse_move,_fgfx_mouse_button")
+  if(EMSCRIPTEN_EXTRA_EXPORTED_FUNCTIONS)
+    set(_exports "${_exports},${EMSCRIPTEN_EXTRA_EXPORTED_FUNCTIONS}")
+  endif()
   target_link_options(${TARGET} PRIVATE
     -sUSE_WEBGL2=1
     -sMIN_WEBGL_VERSION=2
     -sMAX_WEBGL_VERSION=2
     "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,allocate,intArrayFromString,HEAPU8"
-    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite,_fgfx_key_event,_fgfx_mouse_move,_fgfx_mouse_button"
+    "-sEXPORTED_FUNCTIONS=${_exports}"
     "--post-js=${FGFX_ROOT}/js/emscripten-glue.js"
   )
 endfunction()
@@ -41,9 +45,13 @@ function(apply_emscripten_webgpu_target TARGET)
   ensure_emscripten_webgpu()
   target_compile_definitions(${TARGET} PRIVATE FGFX_BACKEND_WEBGPU)
   target_link_libraries(${TARGET} PRIVATE webgpu)
+  set(_exports "_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite,_fgfx_createTextureRGBA,_fgfx_key_event,_fgfx_mouse_move,_fgfx_mouse_button")
+  if(EMSCRIPTEN_EXTRA_EXPORTED_FUNCTIONS)
+    set(_exports "${_exports},${EMSCRIPTEN_EXTRA_EXPORTED_FUNCTIONS}")
+  endif()
   target_link_options(${TARGET} PRIVATE
     "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,allocate,intArrayFromString,HEAPU8"
-    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_fgfx_render,_fgfx_io_fileLoaded,_fgfx_io_fileFailed,_fgfx_getEmptySprite,_fgfx_createTextureRGBA,_fgfx_key_event,_fgfx_mouse_move,_fgfx_mouse_button"
+    "-sEXPORTED_FUNCTIONS=${_exports}"
     "--post-js=${FGFX_ROOT}/js/emscripten-glue.js"
   )
 endfunction()
