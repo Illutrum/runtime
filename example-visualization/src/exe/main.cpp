@@ -38,7 +38,7 @@ int main() {
   host.viewBackend().attach(viewInstance);
 #endif
 
-  host.setFrameCallback([&host](fgfx::FrameBuilder& builder, float delta, const engine::RawInput& raw) {
+  host.setFrameCallback([&host](render::FrameBuilder& builder, float delta, const engine::RawInput& raw) {
     (void)raw;
     auto* view = host.viewBackend().as<View>();
     if (!view) return;

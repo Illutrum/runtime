@@ -131,7 +131,7 @@ C++ objects z vtable'ami przekraczające `.so` boundary są **fragile** — relo
 
 ### 5. thread lifecycle w reloadable `.so`
 
-Każda reloadable `.so` z wątkami musi je joinować w `stop`/`dispose` (leak/crash otherwise). InrementalCpp to miał manual. fgfx `fgfx::io` thread pool żyje w hoście (persistent) — OK. Ale game code z własnymi wątkami = dyscyplina.
+Każda reloadable `.so` z wątkami musi je joinować w `stop`/`dispose` (leak/crash otherwise). InrementalCpp to miał manual. fgfx `render::io` thread pool żyje w hoście (persistent) — OK. Ale game code z własnymi wątkami = dyscyplina.
 
 ### 6. clang header modules = native only
 

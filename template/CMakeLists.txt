@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 3.17)
 project(template_game LANGUAGES CXX)
 
-# Copy this directory with scripts/new-game.sh, then add_subdirectory(your_game) in game-dev/CMakeLists.txt
+# Copy this directory, then add_subdirectory on the copy. Do not add it beside
+# example-game: both declare targets named model and view.
 
 set(GAME_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-set(ENGINE_ROOT ${CMAKE_SOURCE_DIR}/game-dev/engine)
+set(ENGINE_ROOT ${CMAKE_SOURCE_DIR}/engine)
 
 include(${ENGINE_ROOT}/cmake/EngineHelpers.cmake)
-include(${CMAKE_SOURCE_DIR}/game-dev/example-game/cmake/HotswapPlugins.cmake)
+include(${CMAKE_SOURCE_DIR}/example-game/cmake/HotswapPlugins.cmake)
 
 if(NOT EMSCRIPTEN)
   add_library(model SHARED ${GAME_ROOT}/src/model/StubModel.cpp)

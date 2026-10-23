@@ -1,39 +1,19 @@
 #include "Model.hpp"
 #include "GameState.hpp"
 #include "Input.hpp"
-#include "EngineHeaders.hpp"
-
-#include <serialization/deserialize.hpp>
-#include <serialization/serialize.hpp>
-#include <serialization/stream_reader.hpp>
-#include <serialization/stream_writer.hpp>
-#include <serialization/type_registry.hpp>
 
 #include <cstring>
-#include <memory>
-#include <sstream>
+#include <cstdlib>
 #include <string>
 
 namespace {
 
-  serialization::type_registry& gameRegistry() {
-    static serialization::type_registry registry(false);
-    static bool initialized = false;
-    if (!initialized) {
-      registry.register_type(serialization::type_description::create(GameState{}, registry));
-      registry.register_type(serialization::type_description::create(Input{}, registry));
-      initialized = true;
-    }
-    return registry;
-  }
+  // The reflection codec in rpc-cpp needs the reflection compiler.
+  // This sample stores the state bytes so the host builds with the system compiler.
+  constexpr const char* kSchema = "GameState";
 
   std::string registryChecksum() {
-    std::ostringstream output;
-    serialization::stream_writer writer(output);
-    writer.register_serialize_typed_function<serialization::type_description>();
-    serialization::serialize(writer, gameRegistry());
-    writer.write_rest();
-    return output.str();
+    return kSchema;
   }
 
   size_t copyOut(const std::string& bytes, char** out) {
@@ -63,20 +43,16 @@ public:
   }
 
   std::string serialize() override {
-    std::ostringstream output;
-    serialization::stream_writer writer(output);
-    writer.register_serialize_typed_function<GameState>();
-    serialization::serialize(writer, state_);
-    writer.write_rest();
-    return output.str();
+    std::string bytes(sizeof(GameState), '\0');
+    std::memcpy(bytes.data(), &state_, sizeof(GameState));
+    return bytes;
   }
 
   void deserialize(const std::string& bytes) override {
-    std::istringstream input(bytes);
-    serialization::stream_reader reader(input);
-    reader.register_deserialize_typed_function<GameState>();
-    serialization::deserialize(reader, state_);
-    reader.read_rest();
+    if (bytes.size() != sizeof(GameState)) {
+      return;
+    }
+    std::memcpy(&state_, bytes.data(), sizeof(GameState));
   }
 
   std::string schemaChecksum() override {

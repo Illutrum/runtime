@@ -22,14 +22,14 @@ Opis obecnego stanu `game-dev/` i pokrewnego infrastruktury w repo, z perspektyw
 #ifndef EMSCRIPTEN
     finished = true;
     if(loaderThread.joinable()) loaderThread.join();
-    fgfx::io::destroy();
+    render::io::destroy();
 #endif
   }
 
   void init() {
 #ifndef EMSCRIPTEN
     finished = false;
-    fgfx::io::init();
+    render::io::init();
 #endif
 #ifdef __USE_GLFW
     // glfw init, window, glewInit, engine = make_shared<Engine>
@@ -52,7 +52,7 @@ Global engine pointer + named resource maps:
 
 **Build native:** static lib `fgfx` + executable linkujący `GL png z glfw GLEW` (patrz [fgfx/CMakeLists.txt](game-dev/fgfx/CMakeLists.txt)). To jest dobre podłoże pod `dlopen` host/plugin — engine może być statycznie zlinkowany w hoście, kod gry w osobnym `.so`.
 
-**Co musi przetrwać reload (engine/host):** `fgfx::engine` + resource maps, GL context + shader programs (init w `Engine` ctor), `fgfx::io` thread pool, GLFW window.
+**Co musi przetrwać reload (engine/host):** `render::engine` + resource maps, GL context + shader programs (init w `Engine` ctor), `render::io` thread pool, GLFW window.
 **Co jest reloadable (game):** `main()`, demo/game structs, render lambda body, entity state, game logic.
 
 **Web C API (stable boundary):**
@@ -61,7 +61,7 @@ Global engine pointer + named resource maps:
 FGFX_API
 void fgfx_render(double time, float delta, int widthp, int heightp, double rw, double rh) {
   ...
-  fgfx::engine->render(time, delta, widthp, heightp);
+  render::engine->render(time, delta, widthp, heightp);
 ```
 
 ---
@@ -105,12 +105,12 @@ Global singleton:
         assets.erase(it->assetKey);
 ```
 
-**Warstwa fgfx** trzyma `shared_ptr<fgfx::Texture>` wewnątrz assetów — OK, bo persistent service. **Kod gry** nie może trzymać raw payloadów przez reload.
+**Warstwa fgfx** trzyma `shared_ptr<render::Texture>` wewnątrz assetów — OK, bo persistent service. **Kod gry** nie może trzymać raw payloadów przez reload.
 
 ```10:12:game-dev/asset-manager/fgfx/TextureAsset.hpp
   class TextureAsset : public TypedAsset<TextureAsset> {
   public:
-    std::shared_ptr<fgfx::Texture> texture;
+    std::shared_ptr<render::Texture> texture;
 ```
 
 **Tension:** `loading_screen_example.cpp` łamie kontrakt (trzyma `logoSprite`, layers, `fontAsset->font` w `DemoState`) — fine dla demo, ale design reload musi to traktować jako non-surviving.

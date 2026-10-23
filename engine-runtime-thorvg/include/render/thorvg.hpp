@@ -5,7 +5,7 @@
 #include <functional>
 #include "backend/BackendTypes.hpp"
 
-namespace fgfx {
+namespace render {
   struct RenderPass;
 
   namespace thorvg {

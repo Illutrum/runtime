@@ -1,7 +1,8 @@
-#include <fgfx/thorvg.hpp>
+#include <render/thorvg.hpp>
 
-#include <fastgfx.hpp>
+#include <render.hpp>
 #include <thorvg.h>
+#include "config.hpp"
 
 #ifdef FGFX_BACKEND_WEBGPU
 #include "backend/WebGPUBackend.hpp"
@@ -12,7 +13,7 @@
 #endif
 #endif
 
-namespace fgfx::thorvg {
+namespace render::thorvg {
 namespace {
 
 #ifdef FGFX_BACKEND_WEBGPU
@@ -97,20 +98,20 @@ namespace {
 
     tvg::Result result = tvg::Initializer::init(0);
     if (result != tvg::Result::Success) {
-      fgfx_log("ThorVG Initializer::init failed (%s)", resultName(result));
+      render_log("ThorVG Initializer::init failed (%s)", resultName(result));
       return false;
     }
 #ifdef FGFX_BACKEND_WEBGPU
     canvas = tvg::WgCanvas::gen();
     if (!canvas) {
-      fgfx_log("ThorVG WgCanvas::gen failed");
+      render_log("ThorVG WgCanvas::gen failed");
       tvg::Initializer::term();
       return false;
     }
 #else
     canvas = tvg::GlCanvas::gen();
     if (!canvas) {
-      fgfx_log("ThorVG GlCanvas::gen failed");
+      render_log("ThorVG GlCanvas::gen failed");
       tvg::Initializer::term();
       return false;
     }
@@ -123,7 +124,7 @@ namespace {
     clearFn = reinterpret_cast<void (*)(unsigned int)>(glfwGetProcAddress("glClear"));
 #endif
     if (!glContext) {
-      fgfx_log("ThorVG missing current GL context");
+      render_log("ThorVG missing current GL context");
       delete canvas;
       canvas = nullptr;
       tvg::Initializer::term();
@@ -131,7 +132,7 @@ namespace {
     }
 #ifndef EMSCRIPTEN
     if (!clearColorFn || !clearFn) {
-      fgfx_log("ThorVG missing glClear/glClearColor");
+      render_log("ThorVG missing glClear/glClearColor");
       delete canvas;
       canvas = nullptr;
       glContext = nullptr;
@@ -142,8 +143,8 @@ namespace {
 #endif
 
     initialized = true;
-    fgfx::addShutdownHook(&term);
-    fgfx_log("ThorVG initialized (lazy)");
+    render::addShutdownHook(&term);
+    render_log("ThorVG initialized (lazy)");
     return true;
   }
 
@@ -171,18 +172,18 @@ namespace {
       return false;
     }
     if (frameOpen) {
-      fgfx_log("ThorVG begin skipped: frame already open");
+      render_log("ThorVG begin skipped: frame already open");
       return false;
     }
 #ifdef FGFX_BACKEND_WEBGPU
     auto* be = dynamic_cast<WebGPUBackend*>(engine->getBackend());
     if (!be) {
-      fgfx_log("ThorVG begin skipped: WebGPUBackend missing");
+      render_log("ThorVG begin skipped: WebGPUBackend missing");
       return false;
     }
     WGPUTexture rawTex = be->wgpuTexture(tex);
     if (!rawTex) {
-      fgfx_log("ThorVG begin skipped: null WGPUTexture");
+      render_log("ThorVG begin skipped: null WGPUTexture");
       return false;
     }
     tvg::Result result = canvas->target(
@@ -195,13 +196,13 @@ namespace {
       1
     );
     if (result != tvg::Result::Success) {
-      fgfx_log("ThorVG WgCanvas::target failed (%s)", resultName(result));
+      render_log("ThorVG WgCanvas::target failed (%s)", resultName(result));
       return false;
     }
 #else
     auto* be = dynamic_cast<WebGLBackend*>(engine->getBackend());
     if (!be) {
-      fgfx_log("ThorVG begin skipped: WebGLBackend missing");
+      render_log("ThorVG begin skipped: WebGLBackend missing");
       return false;
     }
     GLuint fbo = be->ensureFramebuffer(tex);
@@ -217,7 +218,7 @@ namespace {
       tvg::ColorSpace::ABGR8888S
     );
     if (result != tvg::Result::Success) {
-      fgfx_log("ThorVG target failed after stencil attach (%s)", resultName(result));
+      render_log("ThorVG target failed after stencil attach (%s)", resultName(result));
       be->unbindColorTarget();
       return false;
     }
@@ -230,7 +231,7 @@ namespace {
   void addFilledCircle(float cx, float cy, float rx, float ry,
                        uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     if (!frameOpen || !canvas) {
-      fgfx_log("ThorVG addFilledCircle skipped: no open frame");
+      render_log("ThorVG addFilledCircle skipped: no open frame");
       return;
     }
     tvg::Shape* circle = tvg::Shape::gen();
@@ -238,7 +239,7 @@ namespace {
     circle->fill(r, g, b, a);
     tvg::Result added = canvas->add(circle);
     if (added != tvg::Result::Success) {
-      fgfx_log("ThorVG canvas->add failed (%s)", resultName(added));
+      render_log("ThorVG canvas->add failed (%s)", resultName(added));
       tvg::Paint::rel(circle);
     }
   }
@@ -249,58 +250,58 @@ namespace {
     }
     tvg::Result removed = canvas->remove();
     if (removed != tvg::Result::Success) {
-      fgfx_log("ThorVG canvas->remove failed (%s)", resultName(removed));
+      render_log("ThorVG canvas->remove failed (%s)", resultName(removed));
     }
   }
 
   void addSvg(const char* data, uint32_t size, float w, float h) {
     if (!frameOpen || !canvas) {
-      fgfx_log("ThorVG addSvg skipped: no open frame");
+      render_log("ThorVG addSvg skipped: no open frame");
       return;
     }
     if (!data || size == 0) {
-      fgfx_log("ThorVG addSvg skipped: empty data");
+      render_log("ThorVG addSvg skipped: empty data");
       return;
     }
     tvg::Picture* picture = tvg::Picture::gen();
     tvg::Result loaded = picture->load(data, size, "svg", nullptr, true);
     if (loaded != tvg::Result::Success) {
-      fgfx_log("ThorVG Picture::load(svg) failed (%s)", resultName(loaded));
+      render_log("ThorVG Picture::load(svg) failed (%s)", resultName(loaded));
       tvg::Paint::rel(picture);
       return;
     }
     tvg::Result sized = picture->size(w, h);
     if (sized != tvg::Result::Success) {
-      fgfx_log("ThorVG Picture::size failed (%s)", resultName(sized));
+      render_log("ThorVG Picture::size failed (%s)", resultName(sized));
     }
     tvg::Result added = canvas->add(picture);
     if (added != tvg::Result::Success) {
-      fgfx_log("ThorVG canvas->add(svg) failed (%s)", resultName(added));
+      render_log("ThorVG canvas->add(svg) failed (%s)", resultName(added));
       tvg::Paint::rel(picture);
     }
   }
 
   bool submit() {
     if (!frameOpen || !canvas) {
-      fgfx_log("ThorVG submit skipped: no open frame");
+      render_log("ThorVG submit skipped: no open frame");
       return false;
     }
 
     tvg::Result updated = canvas->update();
     if (updated != tvg::Result::Success) {
-      fgfx_log("ThorVG update failed (%s)", resultName(updated));
+      render_log("ThorVG update failed (%s)", resultName(updated));
       abortFrame();
       return false;
     }
     tvg::Result drawn = canvas->draw(false);
     if (drawn != tvg::Result::Success) {
-      fgfx_log("ThorVG draw failed (%s)", resultName(drawn));
+      render_log("ThorVG draw failed (%s)", resultName(drawn));
       abortFrame();
       return false;
     }
     tvg::Result synced = canvas->sync();
     if (synced != tvg::Result::Success) {
-      fgfx_log("ThorVG sync failed (%s)", resultName(synced));
+      render_log("ThorVG sync failed (%s)", resultName(synced));
       abortFrame();
       return false;
     }

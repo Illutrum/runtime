@@ -14,7 +14,7 @@ Wszystkie ścieżki względem repo root.
 
 | Warstwa | Co zawiera | Build artifact | Reload | Serializacja stanu |
 |---------|-----------|----------------|--------|---------------------|
-| **Silnik** (exe, persistent) | fgfx, asset-manager, `asset_manager_fgfx` (typy assetów), `asset_manager_ui` (loading/error screen), fgfx::io, input, filewatcher, build orchestrator | executable | nigdy | nie |
+| **Silnik** (exe, persistent) | fgfx, asset-manager, `asset_manager_fgfx` (typy assetów), `asset_manager_ui` (loading/error screen), render::io, input, filewatcher, build orchestrator | executable | nigdy | nie |
 | **Model** | logika gry, fizyka, entity state, gameplay rules, multiplayer-runnable (headless) | `model.so` | gdy checksum modelu się zmieni → reload **model + widok** | **tak**, pełna |
 | **Widok** | renderowanie, read modelu per-frame, efekty wizualne (cząsteczki), camera | `view.so` | gdy checksum widoku się zmieni → reload **tylko widok** | nie |
 
@@ -90,7 +90,7 @@ Silnik trzyma assety **dopóki są potrzebne** (refcount-driven przez `AssetRequ
 
 - `manager.request<T>(name)` → `shared_ptr<AssetRequestT<T>>` + rejestracja w `liveRequests` + cancel eviction ([AssetsManager.hpp L40-53](game-dev/asset-manager/src/AssetsManager.hpp)).
 - Ostatni `shared_ptr` umiera → `AssetRequestDeleter` → `onRequestDied` → evict po 120 frames.
-- Heavy lifting (I/O, decode, GL upload) zawsze engine-side: `TextureAsset::startLoadingSelf` woła `fgfx::engine->getTexture` ([TextureAsset.cpp L20](game-dev/asset-manager/fgfx/TextureAsset.cpp)), typy assetów żyją w `asset_manager_fgfx`.
+- Heavy lifting (I/O, decode, GL upload) zawsze engine-side: `TextureAsset::startLoadingSelf` woła `render::engine->getTexture` ([TextureAsset.cpp L20](game-dev/asset-manager/fgfx/TextureAsset.cpp)), typy assetów żyją w `asset_manager_fgfx`.
 
 **Co się dzieje przy reload widoku:**
 
@@ -133,7 +133,7 @@ add_library(model SHARED ${PROJECT_SOURCES})
 - `-fno-autolink` + `RTLD_GLOBAL` przy dlopen → symbole silnika resolve'owane do już-załadowanego executable (v-table, inline functions zostają engine-side).
 - Model linkuje się z `-undefined dynamic_lookup` (Linux: SHARED bez llinkowania engine; macOS: explicit flag).
 
-Skutek: model pisze `fgfx::engine->getTexture(...)`, `manager.request<TextureAsset>(...)` jakby silnik był biblioteką — bez C ABI wrapperów, bez ręcznego `dlsym` per funkcję. Lifecycle modelu przez minimalny C ABI: `model_init`, `model_update`, `model_serialize`, `model_deserialize`, `model_get_type_info`, `model_destroy`. Reszta (asset API, fgfx API) przez v-table silnika.
+Skutek: model pisze `render::engine->getTexture(...)`, `manager.request<TextureAsset>(...)` jakby silnik był biblioteką — bez C ABI wrapperów, bez ręcznego `dlsym` per funkcję. Lifecycle modelu przez minimalny C ABI: `model_init`, `model_update`, `model_serialize`, `model_deserialize`, `model_get_type_info`, `model_destroy`. Reszta (asset API, fgfx API) przez v-table silnika.
 
 To samo dla widoku (kompiluje się z nagłówkami silnika **i modelu** — dlatego model change wymusza reload widoku).
 
@@ -166,7 +166,7 @@ Alternatywa do rozważenia później: double-buffering (model pisze do bufora B 
 
 **Model nie ma żadnego threada.** Thready ma silnik. Najprostsza opcja:
 
-- Silnik: main thread (GLFW main loop) + build thread (filewatcher + ninja, wzór [ProjectDir.cpp L21](game-dev/iterative/CppCad2/projectDir/ProjectDir.cpp)) + asset I/O threads (`fgfx::io::init`, [FileLoader.cpp](game-dev/fgfx/src/io/FileLoader.cpp)).
+- Silnik: main thread (GLFW main loop) + build thread (filewatcher + ninja, wzór [ProjectDir.cpp L21](game-dev/iterative/CppCad2/projectDir/ProjectDir.cpp)) + asset I/O threads (`render::io::init`, [FileLoader.cpp](game-dev/fgfx/src/io/FileLoader.cpp)).
 - Per frame na main thread: `model_update` → `model_snapshot` → `view_render`. Sekwencyjnie, bez wątków w modelu.
 - Optymalizacje (model na osobnym threadzie, double-buffering, job system) — później, gdy profilowanie pokaże bottleneck.
 
@@ -306,7 +306,7 @@ Asset reload (osobny watcher, niezależny):
 flowchart LR
     AFW[Asset FileWatcher] -->|logo.png zmieniony| AM[assetManager]
     AM -->|asset->startReload| T[TextureAsset::startReload]
-    T -->|fgfx::engine->reloadTexture| FGFX[fgfx I/O + decode + GL upload]
+    T -->|render::engine->reloadTexture| FGFX[fgfx I/O + decode + GL upload]
     FGFX -->|handleLoadingFinished| AM
     AM -->|notifyObservers| V[view widzi nową teksturę]
 ```
@@ -323,7 +323,7 @@ flowchart LR
 6. **Engine-owned loading/error UI = clean.** Persistent silnik, własne assety, właściwe miejsce. Rozwiązuje napięcie z `problem.md`.
 7. **Uniform error handling** przez assetManager dla `.so` (brak pliku, ABI mismatch → sensowny komunikat, nie crash).
 8. **Refcounting out-of-the-box** — deleter engine-side, grace window zaprojektowane na ten case.
-9. **CppCad2-style Engine-Model** — bez C ABI wrapperów per funkcja, v-table engine-side, model pisze `fgfx::engine->...` naturalnie.
+9. **CppCad2-style Engine-Model** — bez C ABI wrapperów per funkcja, v-table engine-side, model pisze `render::engine->...` naturalnie.
 10. **Single-threaded MVP** — prosta orkiestracja (update → snapshot → render), brak bugów sync.
 
 ## Minusy / ryzyka

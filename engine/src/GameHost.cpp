@@ -10,7 +10,7 @@
 #include <LoadingScreen.hpp>
 #include <asset_manager.hpp>
 #include <asset_manager_fgfx.hpp>
-#include <fastgfx.hpp>
+#include <render.hpp>
 // FrameGraph.hpp (FrameBuilder) is pulled in via fastgfx.hpp.
 
 #ifdef __HOTSWAP
@@ -59,7 +59,7 @@ namespace engine {
   }
 
   void GameHost::init() {
-    fgfx::init();
+    render::init();
 
     asset_manager::TextureAsset::registerAssetType();
     asset_manager::MSDFFontAsset::registerAssetType();
@@ -70,8 +70,8 @@ namespace engine {
     hotswap::ViewModuleAsset::registerAssetType();
 #endif
 
-    glyphBatch_ = std::make_shared<fgfx::GlyphBatch>(fgfx::engine.get());
-    barBatch_ = std::make_shared<fgfx::PolygonBatch>(fgfx::engine.get());
+    glyphBatch_ = std::make_shared<render::GlyphBatch>(render::engine.get());
+    barBatch_ = std::make_shared<render::PolygonBatch>(render::engine.get());
     setupLoadingUI();
     bindGlfwInput(this);
     bindWasmInput(this);
@@ -161,7 +161,7 @@ namespace engine {
   }
 
   void GameHost::setupRenderLoop() {
-    fgfx::engine->setRenderFunction([this](double time, float delta) {
+    render::engine->setRenderFunction([this](double time, float delta) {
       (void)time;
       (void)delta;
       asset_manager::manager.update(frame_++);
@@ -171,7 +171,7 @@ namespace engine {
 #endif
     });
 
-    fgfx::engine->setSceneRenderFunction([this](fgfx::FrameBuilder& builder, double time, float delta) {
+    render::engine->setSceneRenderFunction([this](render::FrameBuilder& builder, double time, float delta) {
       (void)time;
       if (loading_ || moduleFailed_ || !showScene_) {
         renderLoadingUI(builder);
@@ -187,7 +187,7 @@ namespace engine {
 
   void GameHost::run() {
 #ifdef __USE_GLFW
-    fgfx::engine->mainLoop();
+    render::engine->mainLoop();
 #endif
   }
 
@@ -205,7 +205,7 @@ namespace engine {
     loadingScreen_.reset();
     glyphBatch_.reset();
     barBatch_.reset();
-    fgfx::destroy();
+    render::destroy();
   }
 
   void GameHost::setFrameCallback(FrameCallback callback) {

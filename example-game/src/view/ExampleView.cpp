@@ -22,13 +22,13 @@ public:
     }
   }
 
-  void render(fgfx::FrameBuilder& builder, const void* snapshot, float delta) override {
+  void render(render::FrameBuilder& builder, const void* snapshot, float delta) override {
     (void)delta;
     const auto* state = static_cast<const GameState*>(snapshot);
     if (!state) return;
 
-    float aspectRatio = 1.0f * fgfx::engine->width / fgfx::engine->height;
-    fgfx::ModelViewProjection mvp = {
+    float aspectRatio = 1.0f * render::engine->width / render::engine->height;
+    render::ModelViewProjection mvp = {
       .projectionMatrix = glm::perspective(35.0f, aspectRatio, 0.1f, 1000.0f),
       .viewMatrix = glm::lookAt(glm::vec3(0, 0, 20), glm::vec3(0, 0, 0), glm::vec3(0, -1, 0)),
       .modelMatrix = glm::mat4(1.0),
@@ -38,23 +38,23 @@ public:
     builder.context().mvp = mvp;
 
     if (!spriteBatch_) {
-      spriteBatch_ = std::make_shared<fgfx::SpriteBatch>(fgfx::engine.get());
+      spriteBatch_ = std::make_shared<render::SpriteBatch>(render::engine.get());
     }
     if (!glyphBatch_) {
-      glyphBatch_ = std::make_shared<fgfx::GlyphBatch>(fgfx::engine.get());
+      glyphBatch_ = std::make_shared<render::GlyphBatch>(render::engine.get());
     }
 
-    fgfx::ClearValue clear;
+    render::ClearValue clear;
     clear.r = 0.31f;
     clear.g = 0.52f;
     clear.b = 0.16f;
     clear.a = 1.0f;
-    fgfx::RenderPass& pass = builder.beginPass("scene", builder.surfaceColor(),
-                                               fgfx::LoadOp::Clear, clear);
+    render::RenderPass& pass = builder.beginPass("scene", builder.surfaceColor(),
+                                               render::LoadOp::Clear, clear);
 
     auto texture = textureRequest_ ? textureRequest_->get() : nullptr;
     if (texture && texture->texture) {
-      auto sprite = fgfx::engine->getSprite("assets/logo.png");
+      auto sprite = render::engine->getSprite("assets/logo.png");
       spriteBatch_->reset();
       spriteBatch_->bufferSprite(
         sprite,
@@ -85,8 +85,8 @@ public:
 private:
   std::shared_ptr<AssetRequestT<TextureAsset>> textureRequest_;
   std::shared_ptr<AssetRequestT<MSDFFontAsset>> fontRequest_;
-  std::shared_ptr<fgfx::SpriteBatch> spriteBatch_;
-  std::shared_ptr<fgfx::GlyphBatch> glyphBatch_;
+  std::shared_ptr<render::SpriteBatch> spriteBatch_;
+  std::shared_ptr<render::GlyphBatch> glyphBatch_;
 };
 
 extern "C" {

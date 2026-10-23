@@ -14,7 +14,7 @@ int main() {
 
   engine::GameHost host(config);
   host.init();
-  host.setFrameCallback([&host](fgfx::FrameBuilder& builder, float delta, const engine::RawInput& raw) {
+  host.setFrameCallback([&host](render::FrameBuilder& builder, float delta, const engine::RawInput& raw) {
     auto* model = host.modelBackend().as<Model>();
     auto* view = host.viewBackend().as<View>();
     if (!model || !view) return;

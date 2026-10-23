@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.17)
 project(example_visualization LANGUAGES CXX)
 
 set(GAME_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-set(ENGINE_ROOT ${CMAKE_SOURCE_DIR}/game-dev/engine)
+set(ENGINE_ROOT ${CMAKE_SOURCE_DIR}/engine)
 
 include(${ENGINE_ROOT}/cmake/EngineHelpers.cmake)
-include(${CMAKE_SOURCE_DIR}/game-dev/example-game/cmake/HotswapPlugins.cmake)
+include(${CMAKE_SOURCE_DIR}/example-game/cmake/HotswapPlugins.cmake)
 
 if(NOT EMSCRIPTEN)
   set(VIEW_SO ${CMAKE_BINARY_DIR}/examples/libviz.so)
@@ -50,13 +50,13 @@ if(NOT EMSCRIPTEN)
   add_custom_command(TARGET example_visualization POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/examples/assets
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/logo.png
+      ${FGFX_ROOT}/examples/assets/logo.png
       ${CMAKE_BINARY_DIR}/examples/assets/logo.png
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/ui.png
+      ${FGFX_ROOT}/examples/assets/ui.png
       ${CMAKE_BINARY_DIR}/examples/assets/ui.png
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/ui.fnt
+      ${FGFX_ROOT}/examples/assets/ui.fnt
       ${CMAKE_BINARY_DIR}/examples/assets/ui.fnt
   )
 
@@ -103,13 +103,13 @@ else()
       ${VIZ_OUT_DIR}/backend.js
     COMMAND ${CMAKE_COMMAND} -E make_directory ${VIZ_OUT_DIR}/assets
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/logo.png
+      ${FGFX_ROOT}/examples/assets/logo.png
       ${VIZ_OUT_DIR}/assets/logo.png
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/ui.png
+      ${FGFX_ROOT}/examples/assets/ui.png
       ${VIZ_OUT_DIR}/assets/ui.png
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      ${CMAKE_SOURCE_DIR}/game-dev/fgfx/examples/assets/ui.fnt
+      ${FGFX_ROOT}/examples/assets/ui.fnt
       ${VIZ_OUT_DIR}/assets/ui.fnt
   )
 endif()

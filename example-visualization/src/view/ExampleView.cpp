@@ -1,6 +1,6 @@
 #include "View.hpp"
 #include "EngineHeaders.hpp"
-#include <fgfx/thorvg.hpp>
+#include <render/thorvg.hpp>
 
 #include <algorithm>
 #include <iomanip>
@@ -24,18 +24,18 @@ public:
       fontRequest_->asset->start();
     }
 
-    auto format = fgfx::PixelFormat::RGBA8Unorm;
-    if (fgfx::engine->getBackend() &&
-        fgfx::engine->getBackend()->type() == fgfx::BackendType::WebGPU) {
+    auto format = render::PixelFormat::RGBA8Unorm;
+    if (render::engine->getBackend() &&
+        render::engine->getBackend()->type() == render::BackendType::WebGPU) {
       // WgCanvas blit pipeline is BGRA8Unorm. Sampling a BGRA texture already
       // returns RGB, so no fragment swizzle.
-      format = fgfx::PixelFormat::BGRA8Unorm;
+      format = render::PixelFormat::BGRA8Unorm;
     }
-    vectorTex_ = fgfx::engine->createEmptyTexture(512, 512, format);
-    vectorSprite_ = fgfx::engine->getEmptySprite("thorvg_circle");
+    vectorTex_ = render::engine->createEmptyTexture(512, 512, format);
+    vectorSprite_ = render::engine->getEmptySprite("thorvg_circle");
   }
 
-  void render(fgfx::FrameBuilder& builder, const void* snapshot, float delta) override {
+  void render(render::FrameBuilder& builder, const void* snapshot, float delta) override {
     (void)snapshot;
 
     if (delta > 0.0f) {
@@ -43,8 +43,8 @@ public:
       fps_ = fps_ <= 0.0f ? instantFps : fps_ * 0.9f + instantFps * 0.1f;
     }
 
-    float aspectRatio = 1.0f * fgfx::engine->width / fgfx::engine->height;
-    fgfx::ModelViewProjection mvp = {
+    float aspectRatio = 1.0f * render::engine->width / render::engine->height;
+    render::ModelViewProjection mvp = {
       .projectionMatrix = glm::perspective(35.0f, aspectRatio, 0.1f, 1000.0f),
       .viewMatrix = glm::lookAt(glm::vec3(0, 0, 20), glm::vec3(0, 0, 0), glm::vec3(0, -1, 0)),
       .modelMatrix = glm::mat4(1.0),
@@ -53,22 +53,22 @@ public:
     mvp.multiply();
     builder.context().mvp = mvp;
 
-    int rasterSize = std::clamp(std::max(fgfx::engine->width, fgfx::engine->height), 256, 2048);
+    int rasterSize = std::clamp(std::max(render::engine->width, render::engine->height), 256, 2048);
     if (vectorTex_ && (vectorTex_->width != rasterSize || vectorTex_->height != rasterSize)) {
       vectorTex_->recreate(rasterSize, rasterSize, vectorTex_->format);
       vectorReady_ = false;
     }
 
     if (vectorTex_ && vectorSprite_ && !vectorReady_) {
-      fgfx::RenderPass& tp = builder.beginPass(
+      render::RenderPass& tp = builder.beginPass(
         "thorvg_raster", vectorTex_->handle(),
-        fgfx::LoadOp::Clear, fgfx::ClearValue{0, 0, 0, 0});
+        render::LoadOp::Clear, render::ClearValue{0, 0, 0, 0});
       tp.opaque = true;
-      fgfx::thorvg::record(tp, vectorTex_->handle(), rasterSize, rasterSize, [=] {
+      render::thorvg::record(tp, vectorTex_->handle(), rasterSize, rasterSize, [=] {
         float w = static_cast<float>(rasterSize);
         float h = static_cast<float>(rasterSize);
-        fgfx::thorvg::addFilledCircle(w * 0.5f, h * 0.5f, w * 0.35f, h * 0.35f, 80, 180, 255, 255);
-        fgfx::thorvg::addFilledCircle(w * 0.8f, h * 0.5f, w * 0.35f, h * 0.35f, 255, 180, 255, 255);
+        render::thorvg::addFilledCircle(w * 0.5f, h * 0.5f, w * 0.35f, h * 0.35f, 80, 180, 255, 255);
+        render::thorvg::addFilledCircle(w * 0.8f, h * 0.5f, w * 0.35f, h * 0.35f, 255, 180, 255, 255);
       });
       builder.submitPass();
       vectorReady_ = true;
@@ -79,19 +79,19 @@ public:
     }
 
     if (!spriteBatch_) {
-      spriteBatch_ = std::make_shared<fgfx::SpriteBatch>(fgfx::engine.get());
+      spriteBatch_ = std::make_shared<render::SpriteBatch>(render::engine.get());
     }
     if (!glyphBatch_) {
-      glyphBatch_ = std::make_shared<fgfx::GlyphBatch>(fgfx::engine.get());
+      glyphBatch_ = std::make_shared<render::GlyphBatch>(render::engine.get());
     }
 
-    fgfx::ClearValue clear;
+    render::ClearValue clear;
     clear.r = 0.31f;
     clear.g = 0.52f;
     clear.b = 0.16f;
     clear.a = 1.0f;
-    fgfx::RenderPass& pass = builder.beginPass("scene", builder.surfaceColor(),
-                                               fgfx::LoadOp::Clear, clear);
+    render::RenderPass& pass = builder.beginPass("scene", builder.surfaceColor(),
+                                               render::LoadOp::Clear, clear);
 
     spriteBatch_->reset();
     if (vectorReady_ && vectorSprite_) {
@@ -103,7 +103,7 @@ public:
     }
     auto texture = textureRequest_ ? textureRequest_->get() : nullptr;
     if (texture && texture->texture && texture->texture->initialized) {
-      auto sprite = fgfx::engine->getSprite("assets/logo.png");
+      auto sprite = render::engine->getSprite("assets/logo.png");
       spriteBatch_->bufferSprite(
         sprite,
         glm::vec2(0.0f, 0.0f),
@@ -114,7 +114,7 @@ public:
 
     auto fontAsset = fontRequest_ ? fontRequest_->get() : nullptr;
     if (fontAsset && fontAsset->font) {
-      const bool compute = builder.backend().supports(fgfx::Feature::Compute);
+      const bool compute = builder.backend().supports(render::Feature::Compute);
       std::ostringstream fpsText;
       fpsText << "FPS: " << std::fixed << std::setprecision(0) << fps_;
       glyphBatch_->reset();
@@ -125,7 +125,7 @@ public:
         glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
         fpsText.str());
       std::ostringstream debugText;
-      debugText << "resolution: " << fgfx::engine->width << "x" << fgfx::engine->height;
+      debugText << "resolution: " << render::engine->width << "x" << render::engine->height;
       fontAsset->font->renderString(
         glyphBatch_.get(),
         glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, 62.0f, 0)),
@@ -134,7 +134,7 @@ public:
         debugText.str());
       std::ostringstream featureText;
       featureText << "backend: "
-                  << (builder.backend().type() == fgfx::BackendType::WebGPU ? "WebGPU" : "GL")
+                  << (builder.backend().type() == render::BackendType::WebGPU ? "WebGPU" : "GL")
                   << "  compute: " << (compute ? "yes" : "no");
       fontAsset->font->renderString(
         glyphBatch_.get(),
@@ -147,21 +147,21 @@ public:
 
     builder.submitPass();
 
-    fgfx::RenderPass& computePass = builder.beginPass(
-      "compute_demo", builder.surfaceColor(), fgfx::LoadOp::Load, fgfx::ClearValue{});
-    computePass.require(fgfx::Feature::Compute);
-    computePass.kind = fgfx::PassKind::External;
-    computePass.externalCallback = [](fgfx::RenderBackend&) {};
+    render::RenderPass& computePass = builder.beginPass(
+      "compute_demo", builder.surfaceColor(), render::LoadOp::Load, render::ClearValue{});
+    computePass.require(render::Feature::Compute);
+    computePass.kind = render::PassKind::External;
+    computePass.externalCallback = [](render::RenderBackend&) {};
     builder.submitPass();
   }
 
 private:
   std::shared_ptr<AssetRequestT<TextureAsset>> textureRequest_;
   std::shared_ptr<AssetRequestT<MSDFFontAsset>> fontRequest_;
-  std::shared_ptr<fgfx::SpriteBatch> spriteBatch_;
-  std::shared_ptr<fgfx::GlyphBatch> glyphBatch_;
-  std::shared_ptr<fgfx::Texture> vectorTex_;
-  std::shared_ptr<fgfx::Sprite> vectorSprite_;
+  std::shared_ptr<render::SpriteBatch> spriteBatch_;
+  std::shared_ptr<render::GlyphBatch> glyphBatch_;
+  std::shared_ptr<render::Texture> vectorTex_;
+  std::shared_ptr<render::Sprite> vectorSprite_;
   bool vectorReady_ = false;
   float fps_ = 0.0f;
 };

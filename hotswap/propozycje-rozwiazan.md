@@ -35,7 +35,7 @@ Spektrum od najprostszego do najbardziej kreatywnego. Każdy pomysł = inkrement
 Najprostsza. Engine exe + reloadable `game.so`, brak migracji stanu.
 
 **Struktura:**
-- **Host exe**: fgfx (static lib) + asset-manager + GLFW + `fgfx::io` + `main()` z main loop
+- **Host exe**: fgfx (static lib) + asset-manager + GLFW + `render::io` + `main()` z main loop
 - **`game.so`**: kod gry, single-TU, linkowany z clang header modules (PCM)
 - **Lifecycle**: `extern "C" game_init()`, `game_update(double time, float delta)`, `game_render()`, `game_shutdown()`
 
@@ -60,7 +60,7 @@ flowchart LR
     Engine[fgfx engine]
     AM[asset-manager]
     GLFW[GLFW + GL context]
-    IO[fgfx::io threads]
+    IO[render::io threads]
   end
   subgraph plugin [game.so - reloadable]
     Game[game logic single-TU]

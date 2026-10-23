@@ -5,7 +5,7 @@
 class StubView : public View {
 public:
   void init() override {}
-  void render(fgfx::FrameBuilder& builder, const void* snapshot, float delta) override {
+  void render(render::FrameBuilder& builder, const void* snapshot, float delta) override {
     (void)builder;
     (void)snapshot;
     (void)delta;

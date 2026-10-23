@@ -6,7 +6,7 @@
 #include "Model.hpp"
 
 #include <asset_manager.hpp>
-#include <fastgfx.hpp>
+#include <render.hpp>
 
 #include <cstdlib>
 #include <cstring>
@@ -31,7 +31,7 @@
 namespace {
 
   void touchHostSymbolsForViewPlugin() {
-    volatile void* keepEngine = static_cast<void*>(&fgfx::engine);
+    volatile void* keepEngine = static_cast<void*>(&render::engine);
     volatile void* keepManager = static_cast<void*>(&asset_manager::manager);
     (void)keepEngine;
     (void)keepManager;

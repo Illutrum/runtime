@@ -23,15 +23,19 @@ set(HOTSWAP_SOURCES
 )
 
 add_library(hotswap STATIC ${HOTSWAP_SOURCES})
+include(FetchContent)
+FetchContent_GetProperties(illutrum_assets)
 target_include_directories(hotswap PUBLIC
   include
   assets
-  ${CMAKE_SOURCE_DIR}/game-dev/asset-manager/include
-  ${CMAKE_SOURCE_DIR}/game-dev/asset-manager/src
+  ${illutrum_assets_SOURCE_DIR}/include
+  ${illutrum_assets_SOURCE_DIR}/src
 )
 target_link_libraries(hotswap PUBLIC engine_runtime efsw-static dl)
 target_compile_definitions(hotswap PUBLIC __HOTSWAP)
-apply_p2996_target(hotswap)
+if(COMMAND apply_p2996_target)
+  apply_p2996_target(hotswap)
+endif()
 
 add_executable(test_hotswap
   tests/test_hotswap.cpp
@@ -41,9 +45,15 @@ add_executable(test_hotswap
   tests/test_schema_hash.cpp
 )
 target_link_libraries(test_hotswap PRIVATE hotswap doctest::doctest dl)
-apply_p2996_target(test_hotswap)
-apply_p2996_rpath_origin(test_hotswap)
+if(COMMAND apply_p2996_target)
+  apply_p2996_target(test_hotswap)
+endif()
+if(COMMAND apply_p2996_rpath_origin)
+  apply_p2996_rpath_origin(test_hotswap)
+endif()
 set_target_properties(test_hotswap PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/examples
+  BUILD_RPATH "$ORIGIN"
 )
+target_link_options(test_hotswap PRIVATE "-Wl,-rpath,$ORIGIN")
 add_test(NAME HotswapTests COMMAND $<TARGET_FILE:test_hotswap>)

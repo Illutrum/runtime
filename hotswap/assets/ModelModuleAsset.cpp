@@ -6,13 +6,6 @@
 
 namespace hotswap {
 
-  namespace {
-    struct ModelModuleAssetRegistrar {
-      ModelModuleAssetRegistrar() { ModelModuleAsset::registerAssetType(); }
-    };
-    ModelModuleAssetRegistrar modelModuleAssetRegistrar;
-  }
-
   void ModelModuleAsset::registerAssetType() {
     asset_manager::Asset::registerType<ModelModuleAsset>("modelModule");
   }

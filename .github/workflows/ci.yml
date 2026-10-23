@@ -1,0 +1,20 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: packages
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ git meson pkg-config libpng-dev libglew-dev libglfw3-dev
+      - name: configure, build, test
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target engine_runtime engine_runtime_thorvg example_game example_visualization test_engine test_hotswap
+          ctest --test-dir build -R 'EngineTests|HotswapTests' --output-on-failure
