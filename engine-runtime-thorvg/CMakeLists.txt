@@ -1,11 +1,15 @@
 # Isolated so CMAKE_CXX_FLAGS can drop reflection without affecting plugins / wasm exe.
 # Keep c++26 (the public headers pull promise concepts); ThorVG itself is C++17.
+if(NOT RUNTIME_ROOT)
+  set(RUNTIME_ROOT ${CMAKE_SOURCE_DIR})
+endif()
+
 if(EMSCRIPTEN AND FGFX_BACKEND STREQUAL "WebGPU")
-  include(${CMAKE_SOURCE_DIR}/engine/cmake/EngineHelpers.cmake)
+  include(${RUNTIME_ROOT}/engine/cmake/EngineHelpers.cmake)
   ensure_emscripten_webgpu()
 endif()
 
-include(${CMAKE_SOURCE_DIR}/cmake/ThorVG.cmake)
+include(${RUNTIME_ROOT}/cmake/ThorVG.cmake)
 
 set(_thorvg_cxx_flags "${CMAKE_CXX_FLAGS}")
 foreach(_flag -freflection -fparameter-reflection -fannotation-attributes -fexpansion-statements)

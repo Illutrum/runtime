@@ -3,9 +3,13 @@ FetchContent_GetProperties(illutrum_render)
 FetchContent_GetProperties(illutrum_assets)
 FetchContent_GetProperties(rpc_cpp)
 
+if(NOT RUNTIME_ROOT)
+  set(RUNTIME_ROOT ${CMAKE_SOURCE_DIR})
+endif()
+
 set(FGFX_ROOT ${illutrum_render_SOURCE_DIR})
 set(ASSETS_ROOT ${illutrum_assets_SOURCE_DIR})
-set(ENGINE_ROOT ${CMAKE_SOURCE_DIR}/engine)
+set(ENGINE_ROOT ${RUNTIME_ROOT}/engine)
 set(ENGINE_INCLUDE ${ENGINE_ROOT}/include)
 
 function(apply_emscripten_webgl2_target TARGET)
@@ -112,8 +116,8 @@ function(add_engine_to_game TARGET)
     ${ASSETS_ROOT}/ui
     ${ASSETS_ROOT}/fgfx/include
     ${ASSETS_ROOT}/fgfx
-    ${CMAKE_SOURCE_DIR}/hotswap/include
-    ${CMAKE_SOURCE_DIR}/hotswap/assets
+    ${RUNTIME_ROOT}/hotswap/include
+    ${RUNTIME_ROOT}/hotswap/assets
     ${rpc_cpp_SOURCE_DIR}/src
   )
 

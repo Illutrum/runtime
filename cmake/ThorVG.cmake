@@ -1,7 +1,10 @@
 find_program(MESON_EXECUTABLE meson HINTS /usr/bin REQUIRED)
 find_program(NINJA_EXECUTABLE ninja HINTS /usr/bin REQUIRED)
 
-set(THORVG_SOURCE_DIR ${CMAKE_SOURCE_DIR}/thorvg)
+if(NOT RUNTIME_ROOT)
+  set(RUNTIME_ROOT ${CMAKE_SOURCE_DIR})
+endif()
+set(THORVG_SOURCE_DIR ${RUNTIME_ROOT}/thorvg)
 set(THORVG_BUILD_DIR ${CMAKE_BINARY_DIR}/_deps/thorvg-build)
 set(THORVG_INSTALL_DIR ${CMAKE_BINARY_DIR}/_deps/thorvg-install)
 set(THORVG_LIB ${THORVG_INSTALL_DIR}/lib/libthorvg-1.a)

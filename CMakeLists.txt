@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.17)
 project(runtime LANGUAGES CXX)
 
+# Root of this tree. CMAKE_SOURCE_DIR is the stack root when this file is
+# added from the superbuild, so nested projects must not use it for thorvg,
+# engine, or cmake/.
+set(RUNTIME_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -18,22 +23,27 @@ endif()
 
 enable_testing()
 
-set(ASSETS_WITH_RENDER ON CACHE BOOL "" FORCE)
-FetchContent_Declare(illutrum_assets
-  GIT_REPOSITORY https://github.com/Illutrum/assets.git
-  GIT_TAG v0.1.0
-  GIT_SHALLOW TRUE
-)
-FetchContent_GetProperties(illutrum_assets)
-if(NOT illutrum_assets_POPULATED)
-  FetchContent_Populate(illutrum_assets)
+if(NOT TARGET asset_manager)
+  set(ASSETS_WITH_RENDER ON CACHE BOOL "" FORCE)
+  FetchContent_Declare(illutrum_assets
+    GIT_REPOSITORY https://github.com/Illutrum/assets.git
+    GIT_TAG v0.1.0
+    GIT_SHALLOW TRUE
+  )
+  FetchContent_GetProperties(illutrum_assets)
+  if(NOT illutrum_assets_POPULATED)
+    FetchContent_Populate(illutrum_assets)
+  endif()
+  # Those registrars assign a std::string inside TypedAsset::staticType before
+  # that object is constructed. GameHost registers the same types itself.
+  # Only the fetched copy is rewritten. The superbuild uses the in-tree assets.
+  execute_process(
+    COMMAND python3 ${RUNTIME_ROOT}/cmake/strip-asset-registrars.py ${illutrum_assets_SOURCE_DIR}
+  )
+  add_subdirectory(${illutrum_assets_SOURCE_DIR} ${illutrum_assets_BINARY_DIR})
+elseif(NOT illutrum_assets_SOURCE_DIR)
+  set(illutrum_assets_SOURCE_DIR ${CMAKE_SOURCE_DIR}/illutrum/assets)
 endif()
-# Those registrars assign a std::string inside TypedAsset::staticType before
-# that object is constructed. GameHost registers the same types itself.
-execute_process(
-  COMMAND python3 ${CMAKE_SOURCE_DIR}/cmake/strip-asset-registrars.py ${illutrum_assets_SOURCE_DIR}
-)
-add_subdirectory(${illutrum_assets_SOURCE_DIR} ${illutrum_assets_BINARY_DIR})
 
 option(GAME_DEV_HOTSWAP "Enable native hot-reload (dev)" ON)
 if(EMSCRIPTEN)

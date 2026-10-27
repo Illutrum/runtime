@@ -1,5 +1,8 @@
 set(GAME_SHARED ${GAME_ROOT}/src/shared)
-set(ENGINE_ROOT ${CMAKE_SOURCE_DIR}/engine)
+if(NOT RUNTIME_ROOT)
+  set(RUNTIME_ROOT ${CMAKE_SOURCE_DIR})
+endif()
+set(ENGINE_ROOT ${RUNTIME_ROOT}/engine)
 set(SHARED_MODULE_MAP ${GAME_SHARED}/module.modulemap)
 set(ENGINE_MODULE_MAP ${ENGINE_ROOT}/modulemap/module.modulemap)
 

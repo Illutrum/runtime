@@ -3,10 +3,13 @@ cmake_minimum_required(VERSION 3.17)
 project(example_visualization LANGUAGES CXX)
 
 set(GAME_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-set(ENGINE_ROOT ${CMAKE_SOURCE_DIR}/engine)
+if(NOT RUNTIME_ROOT)
+  set(RUNTIME_ROOT ${CMAKE_SOURCE_DIR})
+endif()
+set(ENGINE_ROOT ${RUNTIME_ROOT}/engine)
 
 include(${ENGINE_ROOT}/cmake/EngineHelpers.cmake)
-include(${CMAKE_SOURCE_DIR}/example-game/cmake/HotswapPlugins.cmake)
+include(${RUNTIME_ROOT}/example-game/cmake/HotswapPlugins.cmake)
 
 if(NOT EMSCRIPTEN)
   set(VIEW_SO ${CMAKE_BINARY_DIR}/examples/libviz.so)
@@ -38,7 +41,7 @@ if(NOT EMSCRIPTEN)
   target_compile_definitions(example_visualization PRIVATE
     GAME_BUILD_DIR="${CMAKE_BINARY_DIR}/examples"
     GAME_CMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}"
-    GAME_CMAKE_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+    GAME_CMAKE_SOURCE_DIR="${RUNTIME_ROOT}"
     GAME_ROOT_DIR="${GAME_ROOT}"
   )
   if(GAME_DEV_HOTSWAP)
