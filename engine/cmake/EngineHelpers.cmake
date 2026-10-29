@@ -12,6 +12,49 @@ set(ASSETS_ROOT ${illutrum_assets_SOURCE_DIR})
 set(ENGINE_ROOT ${RUNTIME_ROOT}/engine)
 set(ENGINE_INCLUDE ${ENGINE_ROOT}/include)
 
+# The browser page loads this before the wasm module. The bundle is gitignored,
+# so a fetched render tree does not contain it. Build it from js/ into the
+# build tree. Rollup's config writes next to the render root; copy that here.
+function(fgfx_add_runtime_js)
+  if(TARGET fgfx_runtime_js)
+    return()
+  endif()
+  set(_js_dir "${FGFX_ROOT}/js")
+  if(NOT EXISTS "${_js_dir}/package.json")
+    message(FATAL_ERROR "FastGFX browser loader is missing at ${_js_dir}")
+  endif()
+  find_program(NPM_EXECUTABLE npm REQUIRED)
+  set(_bundle "${FGFX_ROOT}/runtime-js-compiled.js")
+  set(_out "${CMAKE_BINARY_DIR}/fgfx-runtime-js/runtime-js-compiled.js")
+  set(FGFX_RUNTIME_JS "${_out}" CACHE INTERNAL "Bundled FastGFX browser loader")
+  if(EXISTS "${_js_dir}/package-lock.json")
+    set(_npm_install ${NPM_EXECUTABLE} ci)
+    set(_lock "${_js_dir}/package-lock.json")
+  else()
+    set(_npm_install ${NPM_EXECUTABLE} install)
+    set(_lock "")
+  endif()
+  add_custom_command(
+    OUTPUT "${_out}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/fgfx-runtime-js"
+    COMMAND ${_npm_install}
+    COMMAND ${NPM_EXECUTABLE} run build
+    COMMAND ${CMAKE_COMMAND} -E copy "${_bundle}" "${_out}"
+    WORKING_DIRECTORY "${_js_dir}"
+    DEPENDS
+      "${_js_dir}/package.json"
+      ${_lock}
+      "${_js_dir}/rollup.config.js"
+      "${_js_dir}/runtime.js"
+      "${_js_dir}/TextureManager.js"
+      "${_js_dir}/Animator.js"
+      "${_js_dir}/SpritesTexture.js"
+    COMMENT "Bundling FastGFX runtime-js-compiled.js"
+    VERBATIM
+  )
+  add_custom_target(fgfx_runtime_js DEPENDS "${_out}")
+endfunction()
+
 function(apply_emscripten_webgl2_target TARGET)
   if(NOT EMSCRIPTEN)
     return()

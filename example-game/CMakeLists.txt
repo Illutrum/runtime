@@ -114,6 +114,8 @@ else()
   set_target_properties(example_game PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${GAME_OUT_DIR}
   )
+  fgfx_add_runtime_js()
+  add_dependencies(example_game fgfx_runtime_js)
   if(FGFX_BACKEND STREQUAL "WebGPU")
     file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/backend.js
       "window.FGFX_BACKEND_WEBGPU = true;\n")
@@ -126,7 +128,7 @@ else()
       ${GAME_ROOT}/web/index.html
       ${GAME_OUT_DIR}/index.html
     COMMAND ${CMAKE_COMMAND} -E copy
-      ${FGFX_ROOT}/runtime-js-compiled.js
+      ${FGFX_RUNTIME_JS}
       ${GAME_OUT_DIR}/runtime-js-compiled.js
     COMMAND ${CMAKE_COMMAND} -E copy
       ${CMAKE_CURRENT_BINARY_DIR}/backend.js

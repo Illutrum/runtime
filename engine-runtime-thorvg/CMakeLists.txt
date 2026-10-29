@@ -27,15 +27,27 @@ else()
   )
 endif()
 set_target_properties(engine_runtime_thorvg PROPERTIES
-  CXX_STANDARD 20
+  CXX_STANDARD 26
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
 )
+if(NOT rpc_cpp_SOURCE_DIR AND cpp_rpc_SOURCE_DIR)
+  set(rpc_cpp_SOURCE_DIR ${cpp_rpc_SOURCE_DIR})
+endif()
+if(NOT illutrum_render_SOURCE_DIR OR NOT rpc_cpp_SOURCE_DIR)
+  message(FATAL_ERROR
+    "engine_runtime_thorvg needs illutrum_render_SOURCE_DIR and rpc_cpp_SOURCE_DIR. "
+    "Configure from the stack, or build illutrum/assets with ASSETS_WITH_RENDER first.")
+endif()
 target_include_directories(engine_runtime_thorvg
   PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+  PRIVATE
+    ${illutrum_render_SOURCE_DIR}/src
+    ${illutrum_render_SOURCE_DIR}/include
+    ${illutrum_render_SOURCE_DIR}/glm
+    ${rpc_cpp_SOURCE_DIR}/src
 )
-target_link_libraries(engine_runtime_thorvg PUBLIC engine_runtime)
 if(NOT EMSCRIPTEN)
   set_target_properties(engine_runtime_thorvg PROPERTIES
     OUTPUT_NAME engine_runtime_thorvg
@@ -51,7 +63,7 @@ if(NOT EMSCRIPTEN)
     apply_p2996_rpath_origin(engine_runtime_thorvg)
   endif()
   target_link_options(engine_runtime_thorvg PRIVATE "-Wl,-rpath,$ORIGIN" -Wl,--exclude-libs,ALL)
-  target_link_libraries(engine_runtime_thorvg PRIVATE thorvg)
+  target_link_libraries(engine_runtime_thorvg PRIVATE engine_runtime thorvg)
   add_dependencies(engine_runtime_thorvg engine_runtime)
 else()
   target_link_libraries(engine_runtime_thorvg PUBLIC thorvg)

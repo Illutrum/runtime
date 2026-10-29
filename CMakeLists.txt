@@ -45,6 +45,15 @@ elseif(NOT illutrum_assets_SOURCE_DIR)
   set(illutrum_assets_SOURCE_DIR ${CMAKE_SOURCE_DIR}/illutrum/assets)
 endif()
 
+# FetchContent records these in the assets directory scope. Later targets
+# (ThorVG, the wasm host) read them from this directory.
+if(NOT illutrum_render_SOURCE_DIR)
+  FetchContent_GetProperties(illutrum_render SOURCE_DIR illutrum_render_SOURCE_DIR)
+endif()
+if(NOT rpc_cpp_SOURCE_DIR)
+  FetchContent_GetProperties(rpc_cpp SOURCE_DIR rpc_cpp_SOURCE_DIR)
+endif()
+
 option(GAME_DEV_HOTSWAP "Enable native hot-reload (dev)" ON)
 if(EMSCRIPTEN)
   set(GAME_DEV_HOTSWAP OFF CACHE BOOL "" FORCE)
